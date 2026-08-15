@@ -1,0 +1,21 @@
+# Build and editor artifacts
+build/
+cmake-cache/
+.cache/
+.idea/
+.vscode/
+*.o
+*.so
+*.pyc
+
+# ns-3 generated traces and local experiment outputs
+*.pcap
+*.tr
+*.mob
+*.routes
+*.log
+uav-*.csv
+
+# Local operating-system/editor noise
+*~
+\#*#
