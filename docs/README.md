@@ -15,6 +15,7 @@ nachvollziehbar bleibt.
 | 01 | `scratch/uav-test.cc` | Erste Mobility-Probe mit statischen UAV-Positionen |
 | 02 | `scratch/uav-wifi-baseline.cc` | Wi-Fi Ad-hoc Broadcast mit Paket- und Latenzmetriken |
 | 03 | `scratch/uav-wifi-aoi.cc` | Erweiterung um Age of Information |
+| 04 | `scratch/uav-mesh-olsr-aoi.cc` | Wi-Fi/802.11 Mesh mit OLSR, AoI und Hop-Anzahl |
 
 ## Grundidee
 
@@ -35,9 +36,12 @@ Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.
 
 ## Hinweise zur Interpretation
 
-Die aktuellen Ergebnisse sind Baseline-Ergebnisse. Sie zeigen, ob die
-Messkette funktioniert und wie sich ein einfacher Ein-Hop-Broadcast verhaelt.
-Sie sind noch kein Mesh- oder LTE-Vergleich. Insbesondere bei groesseren
-Abstaenden kann Broadcast scheitern, weil entfernte UAVs nicht direkt in
-Funkreichweite sind. Genau dieser Effekt ist spaeter ein sinnvoller
-Vergleichspunkt fuer Mesh-Routing mit OLSR oder AODV.
+Die ersten Ergebnisse zeigen zwei Architekturklassen:
+
+- Wi-Fi Ad-hoc Broadcast als vereinfachte ADS-L-inspirierte Referenz.
+- Wi-Fi/802.11 Mesh mit OLSR als mehrstufiger Ansatz.
+
+Broadcast ist sehr schnell und erzeugt wenig Anwendungstraffic, scheitert aber
+bei entfernten UAV-Paaren ohne direkte Funkreichweite. OLSR-Mesh kann einen
+Teil dieser Luecken ueber mehrere Hops schliessen, erzeugt aber deutlich mehr
+Unicast-Traffic und hoehere Latenz.

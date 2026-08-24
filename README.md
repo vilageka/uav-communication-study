@@ -17,12 +17,14 @@ scratch/
   uav-test.cc             Erste Mobility-Probe
   uav-wifi-baseline.cc    Wi-Fi Ad-hoc Broadcast mit Latenzmetriken
   uav-wifi-aoi.cc         Wi-Fi Ad-hoc Broadcast mit Age of Information
+  uav-mesh-olsr-aoi.cc    Wi-Fi/802.11 Mesh mit OLSR, AoI und Hop-Anzahl
 
 docs/
   README.md               Uebersicht der Versionen
   01-uav-test.md          Auswertung Version 01
   02-uav-wifi-baseline.md Auswertung Version 02
   03-uav-wifi-aoi.md      Auswertung Version 03
+  04-uav-mesh-olsr-aoi.md Auswertung Version 04
 
 scripts/
   install-to-ns3.sh       Kopiert Scratch-Dateien in ein ns-3 Checkout
@@ -80,6 +82,7 @@ cd /home/vinni/ns3/ns-3-dev
 ./ns3 run uav-test
 ./ns3 run "uav-wifi-baseline --numUavs=20 --spacing=100"
 ./ns3 run "uav-wifi-aoi --numUavs=20 --spacing=100 --aoiSampleInterval=0.1"
+./ns3 run "uav-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
 ```
 
 ## Wichtige Parameter
@@ -96,12 +99,19 @@ Die Wi-Fi Programme unterstuetzen u.a.:
 --enablePcap           PCAP-Traces erzeugen
 ```
 
-`uav-wifi-aoi.cc` ergaenzt:
+`uav-wifi-aoi.cc` und `uav-mesh-olsr-aoi.cc` ergaenzen:
 
 ```text
 --aoiSampleInterval    Abstand zwischen AoI-Samples in Sekunden
 --updateMetricsFile    CSV-Datei fuer empfangene Positionsupdates
 --aoiMetricsFile       CSV-Datei fuer AoI-Samples
+```
+
+`uav-mesh-olsr-aoi.cc` ergaenzt ausserdem:
+
+```text
+--appStart             Vorlaufzeit fuer OLSR-Konvergenz
+--initialTtl           Initiale IPv4-TTL fuer Hop-Count-Schaetzung
 ```
 
 ## Dokumentationsprinzip
@@ -120,12 +130,16 @@ So bleibt nachvollziehbar, welche Version welche Forschungsfrage vorbereitet.
 
 ## Aktueller Stand
 
-Die aktuelle Implementierung modelliert noch keine echte Mesh-Weiterleitung
-und keine LTE/5G-Infrastruktur. Sie ist eine Wi-Fi-Ad-hoc-Broadcast-Baseline.
+Die aktuelle Implementierung enthaelt zwei Architekturklassen:
+
+1. Wi-Fi Ad-hoc Broadcast als vereinfachte ADS-L-inspirierte Referenz.
+2. Wi-Fi/802.11 Mesh mit OLSR als mehrstufiger Ansatz.
+
 Die naechsten sinnvollen Schritte sind:
 
-1. Mesh-Variante mit OLSR oder AODV.
-2. Auswertung von Hop-Anzahl und Netzlast.
+1. Kommunikationsaufwand inklusive OLSR-Kontrollpaketen genauer messen.
+2. Optional AODV als reaktiven Mesh-Vergleich ergaenzen.
 3. LTE-basierte Kommunikationsarchitektur.
-4. Vergleich aller Architekturen anhand von Latenz, Delivery Ratio, AoI und
+4. Vergleich aller Architekturen anhand von Latenz, Delivery Ratio, AoI,
+   Hop-Anzahl und
    Kommunikationslast.
