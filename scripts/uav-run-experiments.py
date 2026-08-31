@@ -40,11 +40,13 @@ class Architecture:
 class Scenario:
     """One point in the experiment matrix."""
 
+    name: str
     uavs: int
     spacing: int
     sim_time: float
     update_interval: float
     aoi_sample_interval: float
+    urban_args: dict[str, str] | None = None
 
 
 # The current thesis comparison contains one direct broadcast reference, one
@@ -75,6 +77,20 @@ ARCHITECTURES = (
         app_start=None,
         has_building_metrics=True,
     ),
+    Architecture(
+        key="urban-olsr-mesh",
+        program="uav-urban-mesh-olsr-aoi",
+        label="Urban Wi-Fi/802.11 OLSR mesh",
+        app_start=5.0,
+        has_building_metrics=True,
+    ),
+    Architecture(
+        key="urban-lte-infra",
+        program="uav-urban-lte-infrastructure-aoi",
+        label="Urban LTE/EPC infrastructure",
+        app_start=1.0,
+        has_building_metrics=True,
+    ),
 )
 
 
@@ -89,6 +105,33 @@ STANDARD_SPACINGS = (60, 100)
 # is useful for later thesis plots, but can take noticeably longer.
 FULL_UAV_COUNTS = (5, 10, 20, 40)
 FULL_SPACINGS = (60, 100, 160)
+
+URBAN_FORMS = {
+    "urban-open": {
+        "blocksX": "3",
+        "blocksY": "3",
+        "buildingLengthX": "70",
+        "buildingLengthY": "70",
+        "streetWidth": "60",
+        "buildingHeight": "20",
+    },
+    "urban-baseline": {
+        "blocksX": "3",
+        "blocksY": "3",
+        "buildingLengthX": "80",
+        "buildingLengthY": "80",
+        "streetWidth": "40",
+        "buildingHeight": "35",
+    },
+    "urban-canyon": {
+        "blocksX": "4",
+        "blocksY": "4",
+        "buildingLengthX": "90",
+        "buildingLengthY": "90",
+        "streetWidth": "25",
+        "buildingHeight": "60",
+    },
+}
 
 
 SUMMARY_PATTERNS = {
@@ -137,7 +180,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--profile",
-        choices=("standard", "full", "smoke"),
+        choices=("standard", "full", "smoke", "urban-forms"),
         default="standard",
         help="Scenario matrix size. 'smoke' is only for a quick script check.",
     )
@@ -190,21 +233,31 @@ def scenario_matrix(profile: str, sim_time: float, update_interval: float, aoi_s
     if profile == "smoke":
         uav_counts = (5,)
         spacings = (100,)
+        scenario_names = ("grid",)
     elif profile == "full":
         uav_counts = FULL_UAV_COUNTS
         spacings = FULL_SPACINGS
+        scenario_names = ("grid",)
+    elif profile == "urban-forms":
+        uav_counts = (20,)
+        spacings = (100,)
+        scenario_names = tuple(URBAN_FORMS.keys())
     else:
         uav_counts = STANDARD_UAV_COUNTS
         spacings = STANDARD_SPACINGS
+        scenario_names = ("grid",)
 
     return [
         Scenario(
+            name=scenario_name,
             uavs=uavs,
             spacing=spacing,
             sim_time=sim_time,
             update_interval=update_interval,
             aoi_sample_interval=aoi_sample_interval,
+            urban_args=URBAN_FORMS.get(scenario_name),
         )
+        for scenario_name in scenario_names
         for uavs in uav_counts
         for spacing in spacings
     ]
@@ -225,6 +278,8 @@ def build_command(
     """Build the ./ns3 run command and the output file paths for one run."""
 
     run_id = f"{architecture.key}_n{scenario.uavs}_d{scenario.spacing}"
+    if scenario.name != "grid":
+        run_id = f"{architecture.key}_{scenario.name}_n{scenario.uavs}_d{scenario.spacing}"
     update_csv = results_dir / f"{run_id}_updates.csv"
     aoi_csv = results_dir / f"{run_id}_aoi.csv"
     building_csv = results_dir / f"{run_id}_buildings.csv"
@@ -246,6 +301,8 @@ def build_command(
 
     if architecture.has_building_metrics:
         program_parts.append(f"--buildingMetricsFile={building_csv}")
+        for key, value in (scenario.urban_args or URBAN_FORMS["urban-baseline"]).items():
+            program_parts.append(f"--{key}={value}")
 
     # Passing the complete scratch-program invocation as one argument is the
     # most reliable way to use the ns-3 wrapper from Python.
@@ -386,12 +443,16 @@ def main() -> int:
                 "architecture": architecture.key,
                 "architecture_label": architecture.label,
                 "program": architecture.program,
+                "scenario": scenario.name,
                 "num_uavs": str(scenario.uavs),
                 "spacing_m": str(scenario.spacing),
                 "sim_time_s": str(scenario.sim_time),
                 "app_start_s": "" if architecture.app_start is None else str(architecture.app_start),
                 "update_interval_s": str(scenario.update_interval),
                 "aoi_sample_interval_s": str(scenario.aoi_sample_interval),
+                "urban_args": "" if scenario.urban_args is None else ";".join(
+                    f"{key}={value}" for key, value in scenario.urban_args.items()
+                ),
                 "updates_csv": str(update_csv),
                 "aoi_csv": str(aoi_csv),
                 "building_csv": "" if building_csv is None else str(building_csv),
@@ -406,12 +467,14 @@ def main() -> int:
             "architecture",
             "architecture_label",
             "program",
+            "scenario",
             "num_uavs",
             "spacing_m",
             "sim_time_s",
             "app_start_s",
             "update_interval_s",
             "aoi_sample_interval_s",
+            "urban_args",
             "sent_packets",
             "received_packets",
             "expected_received_packets",

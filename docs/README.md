@@ -19,6 +19,7 @@ nachvollziehbar bleibt.
 | 05 | `scratch/uav-lte-infrastructure-aoi.cc` | LTE/EPC-Infrastruktur mit AoI |
 | 06 | `scripts/uav-run-experiments.py` | Reproduzierbare Experimentmatrix fuer Architekturvergleiche |
 | 07 | `scratch/uav-urban-wifi-aoi.cc` | Urbanes Wi-Fi-Ad-hoc-Szenario mit Gebaeuden |
+| 08 | `scratch/uav-urban-*.cc` | Urbane Varianten fuer Wi-Fi, OLSR-Mesh und LTE |
 
 ## Grundidee
 
@@ -34,6 +35,8 @@ werten Latenz, Zustellrate und ab Version 03 Age of Information aus.
 ./ns3 run "uav-wifi-baseline --numUavs=20 --spacing=100"
 ./ns3 run "uav-wifi-aoi --numUavs=20 --spacing=100 --aoiSampleInterval=0.1"
 ./ns3 run "uav-urban-wifi-aoi --numUavs=20 --spacing=100"
+./ns3 run "uav-urban-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
+./ns3 run "uav-urban-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 scripts/uav-run-experiments.py --profile standard
 ```
 

@@ -20,6 +20,8 @@ scratch/
   uav-mesh-olsr-aoi.cc    Wi-Fi/802.11 Mesh mit OLSR, AoI und Hop-Anzahl
   uav-lte-infrastructure-aoi.cc LTE/EPC-Infrastruktur mit AoI
   uav-urban-wifi-aoi.cc   Urbanes Wi-Fi-Ad-hoc-Szenario mit Gebaeuden
+  uav-urban-mesh-olsr-aoi.cc Urbanes Wi-Fi/OLSR-Mesh-Szenario
+  uav-urban-lte-infrastructure-aoi.cc Urbanes LTE-Infrastruktur-Szenario
 
 docs/
   README.md               Uebersicht der Versionen
@@ -30,6 +32,7 @@ docs/
   05-uav-lte-infrastructure-aoi.md Auswertung Version 05
   06-uav-experiment-matrix.md Auswertung Version 06
   07-uav-urban-wifi-aoi.md Auswertung Version 07
+  08-uav-urban-all-architectures.md Auswertung Version 08
 
 scripts/
   install-to-ns3.sh       Kopiert Scratch-Dateien in ein ns-3 Checkout
@@ -91,6 +94,8 @@ cd /home/vinni/ns3/ns-3-dev
 ./ns3 run "uav-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
 ./ns3 run "uav-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 ./ns3 run "uav-urban-wifi-aoi --numUavs=20 --spacing=100"
+./ns3 run "uav-urban-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
+./ns3 run "uav-urban-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 scripts/uav-run-experiments.py --profile standard
 ```
 
@@ -132,7 +137,7 @@ Schaetzung. Zusaetzlich gibt es:
 --enableLteTraces      LTE PHY/MAC/RLC/PDCP-Traces erzeugen
 ```
 
-`uav-urban-wifi-aoi.cc` ergaenzt fuer konkrete Stadt-Szenarien:
+Die urbanen Programme ergaenzen fuer konkrete Stadt-Szenarien:
 
 ```text
 --blocksX              Anzahl Gebaeudebloecke in x-Richtung
@@ -166,14 +171,15 @@ Die aktuelle Implementierung enthaelt drei Architekturklassen:
 2. Wi-Fi/802.11 Mesh mit OLSR als mehrstufiger Ansatz.
 3. LTE/EPC-Infrastruktur als zentrale Architektur.
 
-Zusaetzlich gibt es ab Version 07 ein erstes urbanes Gebaeudeszenario fuer die
-Wi-Fi-Ad-hoc-Referenz.
+Zusaetzlich gibt es ab Version 08 urbane Varianten fuer alle drei
+Architekturklassen.
 
 Die naechsten sinnvollen Schritte sind:
 
 1. AoI-Auswertung nach der Einschwingphase ergaenzen.
 2. Kommunikationsaufwand inklusive Kontrollpaketen genauer messen.
-3. Optional AODV als reaktiven Mesh-Vergleich ergaenzen.
-4. Vergleich aller Architekturen anhand von Latenz, Delivery Ratio, AoI,
+3. Groessere urbane Skalierungslaeufe mit 40 UAVs und 160 m Abstand.
+4. Optional AODV als reaktiven Mesh-Vergleich ergaenzen.
+5. Vergleich aller Architekturen anhand von Latenz, Delivery Ratio, AoI,
    Hop-Anzahl und
    Kommunikationslast.
