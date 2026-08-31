@@ -20,6 +20,8 @@ nachvollziehbar bleibt.
 | 06 | `scripts/uav-run-experiments.py` | Reproduzierbare Experimentmatrix fuer Architekturvergleiche |
 | 07 | `scratch/uav-urban-wifi-aoi.cc` | Urbanes Wi-Fi-Ad-hoc-Szenario mit Gebaeuden |
 | 08 | `scratch/uav-urban-*.cc` | Urbane Varianten fuer Wi-Fi, OLSR-Mesh und LTE |
+| 09 | `09-konzeption.md` | Konzeption des Architektur- und Szenariovergleichs |
+| 10 | `10-implementierung.md` | Implementierungsaufbau der ns-3 Simulationen |
 
 ## Grundidee
 

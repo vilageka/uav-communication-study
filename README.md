@@ -33,6 +33,8 @@ docs/
   06-uav-experiment-matrix.md Auswertung Version 06
   07-uav-urban-wifi-aoi.md Auswertung Version 07
   08-uav-urban-all-architectures.md Auswertung Version 08
+  09-konzeption.md        Konzeption des Architektur- und Szenariovergleichs
+  10-implementierung.md   Implementierungsaufbau der ns-3 Simulationen
 
 scripts/
   install-to-ns3.sh       Kopiert Scratch-Dateien in ein ns-3 Checkout
