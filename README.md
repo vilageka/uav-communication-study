@@ -35,10 +35,14 @@ docs/
   08-uav-urban-all-architectures.md Auswertung Version 08
   09-konzeption.md        Konzeption des Architektur- und Szenariovergleichs
   10-implementierung.md   Implementierungsaufbau der ns-3 Simulationen
+  11-steady-state-auswertung.md Auswertung nach Einschwingphase
+  12-steady-state-vergleichsreport.md Automatisch erzeugter Vergleichsreport
 
 scripts/
   install-to-ns3.sh       Kopiert Scratch-Dateien in ein ns-3 Checkout
   uav-run-experiments.py  Startet reproduzierbare Experimentmatrizen
+  uav-analyze-results.py  Wertet vorhandene Ergebnisordner aus
+  uav-build-report.py     Erzeugt Markdown-Reports aus steady-state CSVs
 
 results/
   README.md               Hinweise fuer erzeugte CSV-Ergebnisse
@@ -99,6 +103,7 @@ cd /home/vinni/ns3/ns-3-dev
 ./ns3 run "uav-urban-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
 ./ns3 run "uav-urban-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 scripts/uav-run-experiments.py --profile standard
+scripts/uav-analyze-results.py results/uav-urban-all-v08
 ```
 
 ## Wichtige Parameter

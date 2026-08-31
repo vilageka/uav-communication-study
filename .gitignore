@@ -7,6 +7,7 @@ cmake-cache/
 *.o
 *.so
 *.pyc
+__pycache__/
 
 # ns-3 generated traces and local experiment outputs
 *.pcap

@@ -22,6 +22,8 @@ nachvollziehbar bleibt.
 | 08 | `scratch/uav-urban-*.cc` | Urbane Varianten fuer Wi-Fi, OLSR-Mesh und LTE |
 | 09 | `09-konzeption.md` | Konzeption des Architektur- und Szenariovergleichs |
 | 10 | `10-implementierung.md` | Implementierungsaufbau der ns-3 Simulationen |
+| 11 | `scripts/uav-analyze-results.py` | Steady-state Auswertung vorhandener Ergebnisordner |
+| 12 | `scripts/uav-build-report.py` | Markdown-Vergleichsreport aus steady-state Ergebnissen |
 
 ## Grundidee
 
@@ -40,6 +42,7 @@ werten Latenz, Zustellrate und ab Version 03 Age of Information aus.
 ./ns3 run "uav-urban-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
 ./ns3 run "uav-urban-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 scripts/uav-run-experiments.py --profile standard
+scripts/uav-analyze-results.py results/uav-urban-all-v08
 ```
 
 Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.

@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import importlib.util
 import pathlib
 import re
 import subprocess
@@ -224,6 +225,11 @@ def parse_args() -> argparse.Namespace:
         default=600.0,
         help="Maximum wall-clock seconds for one ns-3 run.",
     )
+    parser.add_argument(
+        "--skip-steady-state",
+        action="store_true",
+        help="Do not create steady-state-summary.csv after the experiment run.",
+    )
     return parser.parse_args()
 
 
@@ -267,6 +273,20 @@ def ns3_root_from_script() -> pathlib.Path:
     """Resolve the ns-3 root directory from this script location."""
 
     return pathlib.Path(__file__).resolve().parents[1]
+
+
+def load_analyzer_module():
+    """Load the sibling analyzer script while keeping its CLI-friendly filename."""
+
+    analyzer_path = pathlib.Path(__file__).resolve().with_name("uav-analyze-results.py")
+    spec = importlib.util.spec_from_file_location("uav_analyze_results", analyzer_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load analyzer script: {analyzer_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def build_command(
@@ -365,6 +385,7 @@ def write_manifest(
 def main() -> int:
     args = parse_args()
     ns3_root = ns3_root_from_script()
+    analyzer_module = None if args.skip_steady_state or args.dry_run else load_analyzer_module()
 
     selected_architectures = [
         architecture
@@ -503,9 +524,23 @@ def main() -> int:
             writer.writeheader()
             writer.writerows(summary_rows)
 
+        if not args.skip_steady_state:
+            steady_rows = [
+                analyzer_module.analyze_row(row, warmup_intervals=1.5)
+                for row in summary_rows
+            ]
+            steady_csv = results_dir / "steady-state-summary.csv"
+            steady_fieldnames = list(steady_rows[0].keys()) if steady_rows else fieldnames
+            with steady_csv.open("w", newline="", encoding="utf-8") as output:
+                writer = csv.DictWriter(output, fieldnames=steady_fieldnames)
+                writer.writeheader()
+                writer.writerows(steady_rows)
+
         print()
         print(f"Experiment complete: {results_dir}", flush=True)
         print(f"Summary CSV: {summary_csv}", flush=True)
+        if not args.skip_steady_state:
+            print(f"Steady-state CSV: {steady_csv}", flush=True)
 
     return 0
 
