@@ -33,6 +33,7 @@ class Architecture:
     program: str
     label: str
     app_start: float | None
+    has_building_metrics: bool = False
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,13 @@ ARCHITECTURES = (
         program="uav-lte-infrastructure-aoi",
         label="LTE/EPC infrastructure",
         app_start=1.0,
+    ),
+    Architecture(
+        key="urban-wifi-adhoc",
+        program="uav-urban-wifi-aoi",
+        label="Urban Wi-Fi ad hoc broadcast",
+        app_start=None,
+        has_building_metrics=True,
     ),
 )
 
@@ -119,6 +127,7 @@ SUMMARY_PATTERNS = {
     "unknown_aoi_share": (r"Unknown AoI share:\s+([0-9.eE+-]+)",),
     "avg_known_aoi_s": (r"Average known AoI:\s+([0-9.eE+-]+)\s+s",),
     "max_known_aoi_s": (r"Max known AoI:\s+([0-9.eE+-]+)\s+s",),
+    "buildings": (r"Buildings:\s+([0-9]+)",),
 }
 
 
@@ -212,12 +221,13 @@ def build_command(
     architecture: Architecture,
     scenario: Scenario,
     results_dir: pathlib.Path,
-) -> tuple[list[str], pathlib.Path, pathlib.Path, pathlib.Path]:
+) -> tuple[list[str], pathlib.Path, pathlib.Path, pathlib.Path, pathlib.Path | None]:
     """Build the ./ns3 run command and the output file paths for one run."""
 
     run_id = f"{architecture.key}_n{scenario.uavs}_d{scenario.spacing}"
     update_csv = results_dir / f"{run_id}_updates.csv"
     aoi_csv = results_dir / f"{run_id}_aoi.csv"
+    building_csv = results_dir / f"{run_id}_buildings.csv"
     stdout_log = results_dir / f"{run_id}.log"
 
     program_parts = [
@@ -234,9 +244,18 @@ def build_command(
     if architecture.app_start is not None:
         program_parts.append(f"--appStart={architecture.app_start}")
 
+    if architecture.has_building_metrics:
+        program_parts.append(f"--buildingMetricsFile={building_csv}")
+
     # Passing the complete scratch-program invocation as one argument is the
     # most reliable way to use the ns-3 wrapper from Python.
-    return [str(ns3_root / "ns3"), "run", " ".join(program_parts)], update_csv, aoi_csv, stdout_log
+    return (
+        [str(ns3_root / "ns3"), "run", " ".join(program_parts)],
+        update_csv,
+        aoi_csv,
+        building_csv if architecture.has_building_metrics else None,
+        stdout_log,
+    )
 
 
 def first_regex_match(text: str, patterns: Iterable[str]) -> str:
@@ -318,7 +337,7 @@ def main() -> int:
     for run_number, architecture in enumerate(selected_architectures, start=1):
         for scenario_index, scenario in enumerate(scenarios, start=1):
             absolute_run_number = (run_number - 1) * len(scenarios) + scenario_index
-            command, update_csv, aoi_csv, stdout_log = build_command(
+            command, update_csv, aoi_csv, building_csv, stdout_log = build_command(
                 ns3_root,
                 architecture,
                 scenario,
@@ -375,6 +394,7 @@ def main() -> int:
                 "aoi_sample_interval_s": str(scenario.aoi_sample_interval),
                 "updates_csv": str(update_csv),
                 "aoi_csv": str(aoi_csv),
+                "building_csv": "" if building_csv is None else str(building_csv),
                 "stdout_log": str(stdout_log),
             }
             row.update(parse_summary(completed.stdout))
@@ -409,8 +429,10 @@ def main() -> int:
             "unknown_aoi_share",
             "avg_known_aoi_s",
             "max_known_aoi_s",
+            "buildings",
             "updates_csv",
             "aoi_csv",
+            "building_csv",
             "stdout_log",
         ]
         with summary_csv.open("w", newline="", encoding="utf-8") as output:

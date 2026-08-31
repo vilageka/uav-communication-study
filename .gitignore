@@ -16,6 +16,7 @@ cmake-cache/
 *.log
 uav-*.csv
 results/uav-experiments-*/
+results/uav-*/
 
 # Local operating-system/editor noise
 *~
