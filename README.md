@@ -27,9 +27,11 @@ docs/
   03-uav-wifi-aoi.md      Auswertung Version 03
   04-uav-mesh-olsr-aoi.md Auswertung Version 04
   05-uav-lte-infrastructure-aoi.md Auswertung Version 05
+  06-uav-experiment-matrix.md Auswertung Version 06
 
 scripts/
   install-to-ns3.sh       Kopiert Scratch-Dateien in ein ns-3 Checkout
+  uav-run-experiments.py  Startet reproduzierbare Experimentmatrizen
 
 results/
   README.md               Hinweise fuer erzeugte CSV-Ergebnisse
@@ -86,6 +88,7 @@ cd /home/vinni/ns3/ns-3-dev
 ./ns3 run "uav-wifi-aoi --numUavs=20 --spacing=100 --aoiSampleInterval=0.1"
 ./ns3 run "uav-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
 ./ns3 run "uav-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
+scripts/uav-run-experiments.py --profile standard
 ```
 
 ## Wichtige Parameter
@@ -142,7 +145,7 @@ So bleibt nachvollziehbar, welche Version welche Forschungsfrage vorbereitet.
 
 ## Aktueller Stand
 
-Die aktuelle Implementierung enthaelt zwei Architekturklassen:
+Die aktuelle Implementierung enthaelt drei Architekturklassen:
 
 1. Wi-Fi Ad-hoc Broadcast als vereinfachte ADS-L-inspirierte Referenz.
 2. Wi-Fi/802.11 Mesh mit OLSR als mehrstufiger Ansatz.
@@ -150,7 +153,7 @@ Die aktuelle Implementierung enthaelt zwei Architekturklassen:
 
 Die naechsten sinnvollen Schritte sind:
 
-1. Gemeinsames Experiment-Skript fuer verschiedene UAV-Zahlen und Abstaende.
+1. AoI-Auswertung nach der Einschwingphase ergaenzen.
 2. Kommunikationsaufwand inklusive Kontrollpaketen genauer messen.
 3. Optional AODV als reaktiven Mesh-Vergleich ergaenzen.
 4. Vergleich aller Architekturen anhand von Latenz, Delivery Ratio, AoI,

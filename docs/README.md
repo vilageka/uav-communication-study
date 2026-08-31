@@ -17,6 +17,7 @@ nachvollziehbar bleibt.
 | 03 | `scratch/uav-wifi-aoi.cc` | Erweiterung um Age of Information |
 | 04 | `scratch/uav-mesh-olsr-aoi.cc` | Wi-Fi/802.11 Mesh mit OLSR, AoI und Hop-Anzahl |
 | 05 | `scratch/uav-lte-infrastructure-aoi.cc` | LTE/EPC-Infrastruktur mit AoI |
+| 06 | `scripts/uav-run-experiments.py` | Reproduzierbare Experimentmatrix fuer Architekturvergleiche |
 
 ## Grundidee
 
@@ -31,6 +32,7 @@ werten Latenz, Zustellrate und ab Version 03 Age of Information aus.
 ./ns3 run uav-test
 ./ns3 run "uav-wifi-baseline --numUavs=20 --spacing=100"
 ./ns3 run "uav-wifi-aoi --numUavs=20 --spacing=100 --aoiSampleInterval=0.1"
+scripts/uav-run-experiments.py --profile standard
 ```
 
 Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.
