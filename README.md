@@ -18,6 +18,7 @@ scratch/
   uav-wifi-baseline.cc    Wi-Fi Ad-hoc Broadcast mit Latenzmetriken
   uav-wifi-aoi.cc         Wi-Fi Ad-hoc Broadcast mit Age of Information
   uav-mesh-olsr-aoi.cc    Wi-Fi/802.11 Mesh mit OLSR, AoI und Hop-Anzahl
+  uav-lte-infrastructure-aoi.cc LTE/EPC-Infrastruktur mit AoI
 
 docs/
   README.md               Uebersicht der Versionen
@@ -25,6 +26,7 @@ docs/
   02-uav-wifi-baseline.md Auswertung Version 02
   03-uav-wifi-aoi.md      Auswertung Version 03
   04-uav-mesh-olsr-aoi.md Auswertung Version 04
+  05-uav-lte-infrastructure-aoi.md Auswertung Version 05
 
 scripts/
   install-to-ns3.sh       Kopiert Scratch-Dateien in ein ns-3 Checkout
@@ -83,6 +85,7 @@ cd /home/vinni/ns3/ns-3-dev
 ./ns3 run "uav-wifi-baseline --numUavs=20 --spacing=100"
 ./ns3 run "uav-wifi-aoi --numUavs=20 --spacing=100 --aoiSampleInterval=0.1"
 ./ns3 run "uav-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
+./ns3 run "uav-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 ```
 
 ## Wichtige Parameter
@@ -114,6 +117,15 @@ Die Wi-Fi Programme unterstuetzen u.a.:
 --initialTtl           Initiale IPv4-TTL fuer Hop-Count-Schaetzung
 ```
 
+`uav-lte-infrastructure-aoi.cc` nutzt ebenfalls `--appStart` und
+`--initialTtl`, interpretiert die Hop-Spalte aber als Infrastruktur-Hop-
+Schaetzung. Zusaetzlich gibt es:
+
+```text
+--enbHeight            Hoehe der zentralen eNodeB
+--enableLteTraces      LTE PHY/MAC/RLC/PDCP-Traces erzeugen
+```
+
 ## Dokumentationsprinzip
 
 Zu jeder groesseren Simulationsversion wird ein eigenes Dokument in `docs/`
@@ -134,12 +146,13 @@ Die aktuelle Implementierung enthaelt zwei Architekturklassen:
 
 1. Wi-Fi Ad-hoc Broadcast als vereinfachte ADS-L-inspirierte Referenz.
 2. Wi-Fi/802.11 Mesh mit OLSR als mehrstufiger Ansatz.
+3. LTE/EPC-Infrastruktur als zentrale Architektur.
 
 Die naechsten sinnvollen Schritte sind:
 
-1. Kommunikationsaufwand inklusive OLSR-Kontrollpaketen genauer messen.
-2. Optional AODV als reaktiven Mesh-Vergleich ergaenzen.
-3. LTE-basierte Kommunikationsarchitektur.
+1. Gemeinsames Experiment-Skript fuer verschiedene UAV-Zahlen und Abstaende.
+2. Kommunikationsaufwand inklusive Kontrollpaketen genauer messen.
+3. Optional AODV als reaktiven Mesh-Vergleich ergaenzen.
 4. Vergleich aller Architekturen anhand von Latenz, Delivery Ratio, AoI,
    Hop-Anzahl und
    Kommunikationslast.

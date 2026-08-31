@@ -22,6 +22,7 @@ cp "${REPO_DIR}/scratch/uav-test.cc" "${NS3_DIR}/scratch/"
 cp "${REPO_DIR}/scratch/uav-wifi-baseline.cc" "${NS3_DIR}/scratch/"
 cp "${REPO_DIR}/scratch/uav-wifi-aoi.cc" "${NS3_DIR}/scratch/"
 cp "${REPO_DIR}/scratch/uav-mesh-olsr-aoi.cc" "${NS3_DIR}/scratch/"
+cp "${REPO_DIR}/scratch/uav-lte-infrastructure-aoi.cc" "${NS3_DIR}/scratch/"
 
 echo "Installed UAV scratch programs to ${NS3_DIR}/scratch"
 echo
@@ -31,3 +32,4 @@ echo "  ./ns3 run uav-test"
 echo "  ./ns3 run \"uav-wifi-baseline --numUavs=20 --spacing=100\""
 echo "  ./ns3 run \"uav-wifi-aoi --numUavs=20 --spacing=100 --aoiSampleInterval=0.1\""
 echo "  ./ns3 run \"uav-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5\""
+echo "  ./ns3 run \"uav-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1\""
