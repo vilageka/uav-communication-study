@@ -26,6 +26,7 @@ nachvollziehbar bleibt.
 | 12 | `scripts/uav-build-report.py` | Markdown-Vergleichsreport aus steady-state Ergebnissen |
 | 13 | `13-methodische-stabilisierung.md` | AoI-Out-of-order-Schutz, RNG-Wiederholungen und Broadcast-Bytes |
 | 13b | `scripts/uav-aggregate-results.py` | Aggregierte CSV-Auswertung mit Mittelwert, Standardabweichung und 95-Prozent-CI |
+| 14 | `14-finale-standardauswertung.md` | Erster echter Standard-Ergebnislauf mit 120 Einzelruns |
 
 ## Grundidee
 
