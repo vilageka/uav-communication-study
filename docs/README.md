@@ -24,6 +24,8 @@ nachvollziehbar bleibt.
 | 10 | `10-implementierung.md` | Implementierungsaufbau der ns-3 Simulationen |
 | 11 | `scripts/uav-analyze-results.py` | Steady-state Auswertung vorhandener Ergebnisordner |
 | 12 | `scripts/uav-build-report.py` | Markdown-Vergleichsreport aus steady-state Ergebnissen |
+| 13 | `13-methodische-stabilisierung.md` | AoI-Out-of-order-Schutz, RNG-Wiederholungen und Broadcast-Bytes |
+| 13b | `scripts/uav-aggregate-results.py` | Aggregierte CSV-Auswertung mit Mittelwert, Standardabweichung und 95-Prozent-CI |
 
 ## Grundidee
 
@@ -42,7 +44,9 @@ werten Latenz, Zustellrate und ab Version 03 Age of Information aus.
 ./ns3 run "uav-urban-mesh-olsr-aoi --numUavs=20 --spacing=100 --appStart=5"
 ./ns3 run "uav-urban-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 scripts/uav-run-experiments.py --profile standard
+scripts/uav-run-experiments.py --profile standard --runs 10 --sim-time 30
 scripts/uav-analyze-results.py results/uav-urban-all-v08
+scripts/uav-aggregate-results.py results/uav-urban-all-v08/steady-state-summary.csv
 ```
 
 Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.

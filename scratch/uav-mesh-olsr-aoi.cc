@@ -170,6 +170,18 @@ RecordHopCount(uint32_t hopCount)
     g_hopStats.maxHopCount = std::max(g_hopStats.maxHopCount, hopCount);
 }
 
+/*
+ * AoI darf nur durch eine wirklich neuere Information verbessert werden.
+ * Verspaetete aeltere Pakete bleiben fuer PDR, Bytezaehler und Latenz gueltig,
+ * sollen aber den gespeicherten Informationsstand nicht zurueckdrehen.
+ */
+bool
+ShouldAcceptInformationUpdate(uint32_t receiverId, uint32_t senderId, double sendTimeSeconds)
+{
+    return !g_knownInformation[receiverId][senderId] ||
+           sendTimeSeconds > g_lastGenerationTime[receiverId][senderId];
+}
+
 uint32_t
 ReadHopCount(Ptr<Packet> packet)
 {
@@ -229,8 +241,11 @@ ReceivePositionUpdate(uint32_t localReceiverId, Ptr<Socket> socket)
             RecordHopCount(hopCount);
         }
         g_packetStats.appBytesReceived += packetSize;
-        g_lastGenerationTime[receiverId][senderId] = sendTimeSeconds;
-        g_knownInformation[receiverId][senderId] = true;
+        if (ShouldAcceptInformationUpdate(receiverId, senderId, sendTimeSeconds))
+        {
+            g_lastGenerationTime[receiverId][senderId] = sendTimeSeconds;
+            g_knownInformation[receiverId][senderId] = true;
+        }
 
         if (g_updateMetrics.is_open())
         {
@@ -365,6 +380,7 @@ main(int argc, char* argv[])
     double spacingMeters = 100.0;
     double altitudeMeters = 80.0;
     double txPowerDbm = 16.0;
+    uint64_t rngRun = 1;
     bool enablePcap = false;
     std::string updateMetricsFile = "uav-mesh-olsr-aoi-updates.csv";
     std::string aoiMetricsFile = "uav-mesh-olsr-aoi-samples.csv";
@@ -383,6 +399,7 @@ main(int argc, char* argv[])
     cmd.AddValue("spacing", "Grid spacing between UAVs in meters", spacingMeters);
     cmd.AddValue("altitude", "UAV altitude in meters", altitudeMeters);
     cmd.AddValue("txPower", "Wi-Fi transmit power in dBm", txPowerDbm);
+    cmd.AddValue("rngRun", "ns-3 RNG run number for reproducible repetitions", rngRun);
     cmd.AddValue("initialTtl", "Initial IPv4 TTL used for hop-count estimation", g_initialTtl);
     cmd.AddValue("updateMetricsFile", "CSV file for received position updates", updateMetricsFile);
     cmd.AddValue("aoiMetricsFile", "CSV file for AoI samples", aoiMetricsFile);
@@ -396,6 +413,9 @@ main(int argc, char* argv[])
     NS_ABORT_MSG_IF(updateIntervalSeconds <= 0.0, "updateInterval must be positive");
     NS_ABORT_MSG_IF(aoiSampleIntervalSeconds <= 0.0, "aoiSampleInterval must be positive");
     NS_ABORT_MSG_IF(g_initialTtl == 0, "initialTtl must be positive");
+    NS_ABORT_MSG_IF(rngRun == 0, "rngRun must be positive");
+
+    RngSeedManager::SetRun(rngRun);
 
     g_updateInterval = Seconds(updateIntervalSeconds);
     g_aoiSampleInterval = Seconds(aoiSampleIntervalSeconds);

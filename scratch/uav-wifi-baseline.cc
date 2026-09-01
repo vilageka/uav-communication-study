@@ -70,6 +70,8 @@ struct SimulationStats
 {
     uint32_t packetsSent{0};
     uint32_t packetsReceived{0};
+    uint64_t appBytesSent{0};
+    uint64_t appBytesReceived{0};
     double latencySumMs{0.0};
     double latencyMinMs{0.0};
     double latencyMaxMs{0.0};
@@ -146,8 +148,9 @@ ReceivePositionUpdate(uint32_t receiverId, Ptr<Socket> socket)
     {
         // ns-3 Pakete enthalten rohe Bytes. Fuer diese Baseline wandeln wir
         // die Bytes wieder in den oben definierten Textstring um.
-        std::string payload(packet->GetSize(), '\0');
-        packet->CopyData(reinterpret_cast<uint8_t*>(&payload[0]), packet->GetSize());
+        const uint32_t packetSize = packet->GetSize();
+        std::string payload(packetSize, '\0');
+        packet->CopyData(reinterpret_cast<uint8_t*>(&payload[0]), packetSize);
 
         uint32_t senderId;
         uint32_t sequence;
@@ -173,6 +176,7 @@ ReceivePositionUpdate(uint32_t receiverId, Ptr<Socket> socket)
         // Sub-Millisekunden-Werte sichtbar bleiben.
         const double latencyMs = (Simulator::Now().GetSeconds() - sendTimeSeconds) * 1000.0;
         g_stats.packetsReceived++;
+        g_stats.appBytesReceived += packetSize;
         g_stats.latencySumMs += latencyMs;
 
         // Min/Max muessen beim ersten empfangenen Paket initialisiert werden.
@@ -195,8 +199,8 @@ ReceivePositionUpdate(uint32_t receiverId, Ptr<Socket> socket)
         {
             g_metrics << std::fixed << std::setprecision(6) << Simulator::Now().GetSeconds()
                       << ',' << senderId << ',' << receiverId << ',' << sequence << ','
-                      << latencyMs << ',' << position.x << ',' << position.y << ','
-                      << position.z << '\n';
+                      << latencyMs << ',' << packetSize << ',' << position.x << ','
+                      << position.y << ',' << position.z << '\n';
         }
 
         // Verbose-Ausgabe ist nuetzlich beim Debuggen, wuerde aber bei vielen
@@ -239,6 +243,7 @@ SendPositionUpdate(NodeContainer uavs, uint32_t senderId, uint32_t remainingUpda
     // im selben Ad-hoc-Funknetz auszusenden.
     g_sendSockets[senderId]->Send(packet);
     g_stats.packetsSent++;
+    g_stats.appBytesSent += message.size();
 
     if (remainingUpdates > 1)
     {
@@ -307,6 +312,7 @@ main(int argc, char* argv[])
     double spacingMeters = 100.0;
     double altitudeMeters = 80.0;
     double txPowerDbm = 16.0;
+    uint64_t rngRun = 1;
     bool enablePcap = false;
     std::string metricsFile = "uav-wifi-baseline-metrics.csv";
     std::string phyMode = "DsssRate11Mbps";
@@ -330,6 +336,7 @@ main(int argc, char* argv[])
     cmd.AddValue("spacing", "Grid spacing between UAVs in meters", spacingMeters);
     cmd.AddValue("altitude", "UAV altitude in meters", altitudeMeters);
     cmd.AddValue("txPower", "Wi-Fi transmit power in dBm", txPowerDbm);
+    cmd.AddValue("rngRun", "ns-3 RNG run number for reproducible repetitions", rngRun);
     cmd.AddValue("metricsFile", "CSV file for received position updates", metricsFile);
     cmd.AddValue("enablePcap", "Enable Wi-Fi pcap tracing", enablePcap);
     cmd.AddValue("verbose", "Print every received position update", g_verbose);
@@ -341,6 +348,9 @@ main(int argc, char* argv[])
     NS_ABORT_MSG_IF(numUavs < 2, "numUavs must be at least 2");
     NS_ABORT_MSG_IF(simTimeSeconds <= 0.0, "simTime must be positive");
     NS_ABORT_MSG_IF(updateIntervalSeconds <= 0.0, "updateInterval must be positive");
+    NS_ABORT_MSG_IF(rngRun == 0, "rngRun must be positive");
+
+    RngSeedManager::SetRun(rngRun);
 
     // Anzahl der Positionsupdates pro UAV. floor() bedeutet:
     // Bei simTime=10 und interval=3 sendet jedes UAV 3 Updates.
@@ -449,7 +459,7 @@ main(int argc, char* argv[])
     // CSV-Datei fuer Rohdaten. Jede Zeile steht fuer ein erfolgreich
     // empfangenes Positionsupdate bei einem bestimmten Empfaenger.
     g_metrics.open(metricsFile);
-    g_metrics << "time_s,sender_id,receiver_id,sequence,latency_ms,x_m,y_m,z_m\n";
+    g_metrics << "time_s,sender_id,receiver_id,sequence,latency_ms,payload_bytes,x_m,y_m,z_m\n";
 
     // PCAP-Traces sind optional, weil sie viele Dateien erzeugen koennen.
     // Sie sind hilfreich, wenn spaeter mit Wireshark oder tcpdump einzelne
@@ -502,6 +512,8 @@ main(int argc, char* argv[])
     std::cout << "Received packets: " << g_stats.packetsReceived << " / " << expectedReceives
               << std::endl;
     std::cout << "Delivery ratio: " << deliveryRatio << std::endl;
+    std::cout << "Application bytes sent: " << g_stats.appBytesSent << std::endl;
+    std::cout << "Application bytes received: " << g_stats.appBytesReceived << std::endl;
     std::cout << "Average latency: " << averageLatencyMs << " ms" << std::endl;
     std::cout << "Min latency: " << g_stats.latencyMinMs << " ms" << std::endl;
     std::cout << "Max latency: " << g_stats.latencyMaxMs << " ms" << std::endl;

@@ -233,6 +233,18 @@ RecordHopCount(uint32_t hopCount)
     g_hopStats.maxHopCount = std::max(g_hopStats.maxHopCount, hopCount);
 }
 
+/*
+ * AoI verwendet den neuesten bekannten Erzeugungszeitpunkt je receiver/sender.
+ * Ein spaet eintreffendes aelteres Paket ist weiterhin ein erfolgreicher
+ * Empfang, darf den Informationsstand aber nicht rueckwaerts aktualisieren.
+ */
+bool
+ShouldAcceptInformationUpdate(uint32_t receiverId, uint32_t senderId, double sendTimeSeconds)
+{
+    return !g_knownInformation[receiverId][senderId] ||
+           sendTimeSeconds > g_lastGenerationTime[receiverId][senderId];
+}
+
 uint32_t
 ReadHopCount(Ptr<Packet> packet)
 {
@@ -292,8 +304,11 @@ ReceivePositionUpdate(uint32_t localReceiverId, Ptr<Socket> socket)
             RecordHopCount(hopCount);
         }
         g_packetStats.appBytesReceived += packetSize;
-        g_lastGenerationTime[receiverId][senderId] = sendTimeSeconds;
-        g_knownInformation[receiverId][senderId] = true;
+        if (ShouldAcceptInformationUpdate(receiverId, senderId, sendTimeSeconds))
+        {
+            g_lastGenerationTime[receiverId][senderId] = sendTimeSeconds;
+            g_knownInformation[receiverId][senderId] = true;
+        }
 
         if (g_updateMetrics.is_open())
         {
@@ -539,6 +554,7 @@ main(int argc, char* argv[])
     double spacingMeters = 100.0;
     double altitudeMeters = 80.0;
     double enbHeightMeters = 45.0;
+    uint64_t rngRun = 1;
     bool enablePcap = false;
     bool enableLteTraces = false;
     std::string updateMetricsFile = "uav-lte-infrastructure-aoi-updates.csv";
@@ -558,6 +574,7 @@ main(int argc, char* argv[])
     cmd.AddValue("spacing", "Grid spacing between UAVs in meters", spacingMeters);
     cmd.AddValue("altitude", "UAV altitude in meters", altitudeMeters);
     cmd.AddValue("enbHeight", "Height of the central eNodeB in meters", enbHeightMeters);
+    cmd.AddValue("rngRun", "ns-3 RNG run number for reproducible repetitions", rngRun);
     cmd.AddValue("blocksX", "Number of building blocks along the x axis", urban.blocksX);
     cmd.AddValue("blocksY", "Number of building blocks along the y axis", urban.blocksY);
     cmd.AddValue("buildingLengthX", "Building footprint length along x in meters", urban.buildingLengthX);
@@ -579,11 +596,14 @@ main(int argc, char* argv[])
     NS_ABORT_MSG_IF(updateIntervalSeconds <= 0.0, "updateInterval must be positive");
     NS_ABORT_MSG_IF(aoiSampleIntervalSeconds <= 0.0, "aoiSampleInterval must be positive");
     NS_ABORT_MSG_IF(g_initialTtl == 0, "initialTtl must be positive");
+    NS_ABORT_MSG_IF(rngRun == 0, "rngRun must be positive");
     NS_ABORT_MSG_IF(urban.blocksX == 0 || urban.blocksY == 0, "blocksX and blocksY must be positive");
     NS_ABORT_MSG_IF(urban.buildingLengthX <= 0.0 || urban.buildingLengthY <= 0.0,
                     "building lengths must be positive");
     NS_ABORT_MSG_IF(urban.streetWidth <= 0.0, "streetWidth must be positive");
     NS_ABORT_MSG_IF(urban.buildingHeight <= 0.0, "buildingHeight must be positive");
+
+    RngSeedManager::SetRun(rngRun);
 
     g_updateInterval = Seconds(updateIntervalSeconds);
     g_aoiSampleInterval = Seconds(aoiSampleIntervalSeconds);

@@ -67,6 +67,8 @@ struct PacketStats
 {
     uint32_t packetsSent{0};
     uint32_t packetsReceived{0};
+    uint64_t appBytesSent{0};
+    uint64_t appBytesReceived{0};
     double latencySumMs{0.0};
     double latencyMinMs{0.0};
     double latencyMaxMs{0.0};
@@ -179,6 +181,22 @@ RecordLatency(double latencyMs)
 }
 
 /*
+ * Prueft, ob ein empfangenes Update den gespeicherten Informationsstand
+ * verbessern darf.
+ *
+ * Fuer AoI zaehlt immer die frischeste bekannte Information. Falls spaeter ein
+ * aelteres Paket ankommt, darf es PDR und Latenz weiterhin beeinflussen, aber
+ * es darf den AoI-Zustand nicht auf einen aelteren Erzeugungszeitpunkt
+ * zuruecksetzen.
+ */
+bool
+ShouldAcceptInformationUpdate(uint32_t receiverId, uint32_t senderId, double sendTimeSeconds)
+{
+    return !g_knownInformation[receiverId][senderId] ||
+           sendTimeSeconds > g_lastGenerationTime[receiverId][senderId];
+}
+
+/*
  * Callback fuer eingehende UDP-Positionsupdates.
  *
  * Fuer AoI ist die wichtigste Operation in dieser Funktion:
@@ -197,8 +215,9 @@ ReceivePositionUpdate(uint32_t receiverId, Ptr<Socket> socket)
 
     while ((packet = socket->RecvFrom(sourceAddress)))
     {
-        std::string payload(packet->GetSize(), '\0');
-        packet->CopyData(reinterpret_cast<uint8_t*>(&payload[0]), packet->GetSize());
+        const uint32_t packetSize = packet->GetSize();
+        std::string payload(packetSize, '\0');
+        packet->CopyData(reinterpret_cast<uint8_t*>(&payload[0]), packetSize);
 
         uint32_t senderId;
         uint32_t sequence;
@@ -221,15 +240,19 @@ ReceivePositionUpdate(uint32_t receiverId, Ptr<Socket> socket)
         const double latencyMs = (nowSeconds - sendTimeSeconds) * 1000.0;
 
         RecordLatency(latencyMs);
-        g_lastGenerationTime[receiverId][senderId] = sendTimeSeconds;
-        g_knownInformation[receiverId][senderId] = true;
+        g_packetStats.appBytesReceived += packetSize;
+        if (ShouldAcceptInformationUpdate(receiverId, senderId, sendTimeSeconds))
+        {
+            g_lastGenerationTime[receiverId][senderId] = sendTimeSeconds;
+            g_knownInformation[receiverId][senderId] = true;
+        }
 
         if (g_updateMetrics.is_open())
         {
             g_updateMetrics << std::fixed << std::setprecision(6) << nowSeconds << ','
                             << sendTimeSeconds << ',' << senderId << ',' << receiverId << ','
-                            << sequence << ',' << latencyMs << ',' << position.x << ','
-                            << position.y << ',' << position.z << '\n';
+                            << sequence << ',' << latencyMs << ',' << packetSize << ','
+                            << position.x << ',' << position.y << ',' << position.z << '\n';
         }
 
         if (g_verbose)
@@ -311,6 +334,7 @@ SendPositionUpdate(NodeContainer uavs, uint32_t senderId, uint32_t remainingUpda
 
     g_sendSockets[senderId]->Send(packet);
     g_packetStats.packetsSent++;
+    g_packetStats.appBytesSent += message.size();
 
     if (remainingUpdates > 1)
     {
@@ -369,6 +393,7 @@ main(int argc, char* argv[])
     double spacingMeters = 100.0;
     double altitudeMeters = 80.0;
     double txPowerDbm = 16.0;
+    uint64_t rngRun = 1;
     bool enablePcap = false;
     std::string updateMetricsFile = "uav-wifi-aoi-updates.csv";
     std::string aoiMetricsFile = "uav-wifi-aoi-samples.csv";
@@ -395,6 +420,7 @@ main(int argc, char* argv[])
     cmd.AddValue("spacing", "Grid spacing between UAVs in meters", spacingMeters);
     cmd.AddValue("altitude", "UAV altitude in meters", altitudeMeters);
     cmd.AddValue("txPower", "Wi-Fi transmit power in dBm", txPowerDbm);
+    cmd.AddValue("rngRun", "ns-3 RNG run number for reproducible repetitions", rngRun);
     cmd.AddValue("updateMetricsFile", "CSV file for received position updates", updateMetricsFile);
     cmd.AddValue("aoiMetricsFile", "CSV file for AoI samples", aoiMetricsFile);
     cmd.AddValue("enablePcap", "Enable Wi-Fi pcap tracing", enablePcap);
@@ -405,6 +431,9 @@ main(int argc, char* argv[])
     NS_ABORT_MSG_IF(simTimeSeconds <= 0.0, "simTime must be positive");
     NS_ABORT_MSG_IF(updateIntervalSeconds <= 0.0, "updateInterval must be positive");
     NS_ABORT_MSG_IF(aoiSampleIntervalSeconds <= 0.0, "aoiSampleInterval must be positive");
+    NS_ABORT_MSG_IF(rngRun == 0, "rngRun must be positive");
+
+    RngSeedManager::SetRun(rngRun);
 
     g_updateInterval = Seconds(updateIntervalSeconds);
     g_aoiSampleInterval = Seconds(aoiSampleIntervalSeconds);
@@ -471,7 +500,8 @@ main(int argc, char* argv[])
     }
 
     g_updateMetrics.open(updateMetricsFile);
-    g_updateMetrics << "receive_time_s,send_time_s,sender_id,receiver_id,sequence,latency_ms,x_m,y_m,z_m\n";
+    g_updateMetrics << "receive_time_s,send_time_s,sender_id,receiver_id,sequence,latency_ms,"
+                    << "payload_bytes,x_m,y_m,z_m\n";
 
     g_aoiMetrics.open(aoiMetricsFile);
     g_aoiMetrics << "time_s,receiver_id,sender_id,known,aoi_s\n";
@@ -527,6 +557,8 @@ main(int argc, char* argv[])
     std::cout << "Received packets: " << g_packetStats.packetsReceived << " / " << expectedReceives
               << std::endl;
     std::cout << "Delivery ratio: " << deliveryRatio << std::endl;
+    std::cout << "Application bytes sent: " << g_packetStats.appBytesSent << std::endl;
+    std::cout << "Application bytes received: " << g_packetStats.appBytesReceived << std::endl;
     std::cout << "Average latency: " << averageLatencyMs << " ms" << std::endl;
     std::cout << "Min latency: " << g_packetStats.latencyMinMs << " ms" << std::endl;
     std::cout << "Max latency: " << g_packetStats.latencyMaxMs << " ms" << std::endl;

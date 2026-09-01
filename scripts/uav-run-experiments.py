@@ -209,6 +209,12 @@ def parse_args() -> argparse.Namespace:
         help="Seconds between two AoI samples.",
     )
     parser.add_argument(
+        "--runs",
+        type=int,
+        default=1,
+        help="Number of independent ns-3 RNG runs per architecture/scenario point.",
+    )
+    parser.add_argument(
         "--only",
         choices=tuple(arch.key for arch in ARCHITECTURES),
         action="append",
@@ -294,12 +300,13 @@ def build_command(
     architecture: Architecture,
     scenario: Scenario,
     results_dir: pathlib.Path,
+    rng_run: int,
 ) -> tuple[list[str], pathlib.Path, pathlib.Path, pathlib.Path, pathlib.Path | None]:
     """Build the ./ns3 run command and the output file paths for one run."""
 
-    run_id = f"{architecture.key}_n{scenario.uavs}_d{scenario.spacing}"
+    run_id = f"{architecture.key}_n{scenario.uavs}_d{scenario.spacing}_r{rng_run}"
     if scenario.name != "grid":
-        run_id = f"{architecture.key}_{scenario.name}_n{scenario.uavs}_d{scenario.spacing}"
+        run_id = f"{architecture.key}_{scenario.name}_n{scenario.uavs}_d{scenario.spacing}_r{rng_run}"
     update_csv = results_dir / f"{run_id}_updates.csv"
     aoi_csv = results_dir / f"{run_id}_aoi.csv"
     building_csv = results_dir / f"{run_id}_buildings.csv"
@@ -312,6 +319,7 @@ def build_command(
         f"--simTime={scenario.sim_time}",
         f"--updateInterval={scenario.update_interval}",
         f"--aoiSampleInterval={scenario.aoi_sample_interval}",
+        f"--rngRun={rng_run}",
         f"--updateMetricsFile={update_csv}",
         f"--aoiMetricsFile={aoi_csv}",
     ]
@@ -359,6 +367,7 @@ def write_manifest(
     profile: str,
     scenarios: list[Scenario],
     architectures: list[Architecture],
+    runs: int,
 ) -> None:
     """Write a small text file describing what this experiment directory means."""
 
@@ -369,6 +378,7 @@ def write_manifest(
                 "UAV communication experiment matrix",
                 f"created_at={dt.datetime.now().isoformat(timespec='seconds')}",
                 f"profile={profile}",
+                f"rng_runs=1..{runs}",
                 "architectures=" + ",".join(architecture.key for architecture in architectures),
                 "uav_counts=" + ",".join(str(value) for value in sorted({scenario.uavs for scenario in scenarios})),
                 "spacings=" + ",".join(str(value) for value in sorted({scenario.spacing for scenario in scenarios})),
@@ -384,6 +394,9 @@ def write_manifest(
 
 def main() -> int:
     args = parse_args()
+    if args.runs < 1:
+        raise SystemExit("--runs must be at least 1")
+
     ns3_root = ns3_root_from_script()
     analyzer_module = None if args.skip_steady_state or args.dry_run else load_analyzer_module()
 
@@ -407,80 +420,85 @@ def main() -> int:
 
     if not args.dry_run:
         results_dir.mkdir(parents=True, exist_ok=True)
-        write_manifest(results_dir, args.profile, scenarios, selected_architectures)
+        write_manifest(results_dir, args.profile, scenarios, selected_architectures, args.runs)
 
     summary_rows: list[dict[str, str]] = []
-    total_runs = len(selected_architectures) * len(scenarios)
+    total_runs = len(selected_architectures) * len(scenarios) * args.runs
+    absolute_run_number = 0
 
-    for run_number, architecture in enumerate(selected_architectures, start=1):
-        for scenario_index, scenario in enumerate(scenarios, start=1):
-            absolute_run_number = (run_number - 1) * len(scenarios) + scenario_index
-            command, update_csv, aoi_csv, building_csv, stdout_log = build_command(
-                ns3_root,
-                architecture,
-                scenario,
-                results_dir,
-            )
-            printable_command = " ".join(command)
+    for architecture in selected_architectures:
+        for scenario in scenarios:
+            for rng_run in range(1, args.runs + 1):
+                absolute_run_number += 1
 
-            print(
-                f"[{absolute_run_number}/{total_runs}] "
-                f"{architecture.key}: {scenario.uavs} UAVs, {scenario.spacing} m",
-                flush=True,
-            )
-            print(f"  {printable_command}", flush=True)
-
-            if args.dry_run:
-                continue
-
-            try:
-                completed = subprocess.run(
-                    command,
-                    cwd=ns3_root,
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=args.timeout,
+                command, update_csv, aoi_csv, building_csv, stdout_log = build_command(
+                    ns3_root,
+                    architecture,
+                    scenario,
+                    results_dir,
+                    rng_run,
                 )
-            except subprocess.TimeoutExpired as error:
+                printable_command = " ".join(command)
+
+                print(
+                    f"[{absolute_run_number}/{total_runs}] "
+                    f"{architecture.key}: {scenario.uavs} UAVs, {scenario.spacing} m, rngRun {rng_run}",
+                    flush=True,
+                )
+                print(f"  {printable_command}", flush=True)
+
+                if args.dry_run:
+                    continue
+
+                try:
+                    completed = subprocess.run(
+                        command,
+                        cwd=ns3_root,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=args.timeout,
+                    )
+                except subprocess.TimeoutExpired as error:
+                    stdout_log.write_text(
+                        (error.stdout or "") + (error.stderr or ""),
+                        encoding="utf-8",
+                    )
+                    print(f"  timed out after {args.timeout} seconds", file=sys.stderr)
+                    print(f"  see {stdout_log}", file=sys.stderr)
+                    return 124
                 stdout_log.write_text(
-                    (error.stdout or "") + (error.stderr or ""),
+                    completed.stdout + completed.stderr,
                     encoding="utf-8",
                 )
-                print(f"  timed out after {args.timeout} seconds", file=sys.stderr)
-                print(f"  see {stdout_log}", file=sys.stderr)
-                return 124
-            stdout_log.write_text(
-                completed.stdout + completed.stderr,
-                encoding="utf-8",
-            )
 
-            if completed.returncode != 0:
-                print(f"  failed with exit code {completed.returncode}", file=sys.stderr)
-                print(f"  see {stdout_log}", file=sys.stderr)
-                return completed.returncode
+                if completed.returncode != 0:
+                    print(f"  failed with exit code {completed.returncode}", file=sys.stderr)
+                    print(f"  see {stdout_log}", file=sys.stderr)
+                    return completed.returncode
 
-            row = {
-                "architecture": architecture.key,
-                "architecture_label": architecture.label,
-                "program": architecture.program,
-                "scenario": scenario.name,
-                "num_uavs": str(scenario.uavs),
-                "spacing_m": str(scenario.spacing),
-                "sim_time_s": str(scenario.sim_time),
-                "app_start_s": "" if architecture.app_start is None else str(architecture.app_start),
-                "update_interval_s": str(scenario.update_interval),
-                "aoi_sample_interval_s": str(scenario.aoi_sample_interval),
-                "urban_args": "" if scenario.urban_args is None else ";".join(
-                    f"{key}={value}" for key, value in scenario.urban_args.items()
-                ),
-                "updates_csv": str(update_csv),
-                "aoi_csv": str(aoi_csv),
-                "building_csv": "" if building_csv is None else str(building_csv),
-                "stdout_log": str(stdout_log),
-            }
-            row.update(parse_summary(completed.stdout))
-            summary_rows.append(row)
+                row = {
+                    "architecture": architecture.key,
+                    "architecture_label": architecture.label,
+                    "program": architecture.program,
+                    "scenario": scenario.name,
+                    "num_uavs": str(scenario.uavs),
+                    "spacing_m": str(scenario.spacing),
+                    "sim_time_s": str(scenario.sim_time),
+                    "app_start_s": "" if architecture.app_start is None else str(architecture.app_start),
+                    "update_interval_s": str(scenario.update_interval),
+                    "aoi_sample_interval_s": str(scenario.aoi_sample_interval),
+                    "rng_run": str(rng_run),
+                    "urban_args": "" if scenario.urban_args is None else ";".join(
+                        f"{key}={value}" for key, value in scenario.urban_args.items()
+                    ),
+                    "updates_csv": str(update_csv),
+                    "aoi_csv": str(aoi_csv),
+                    "building_csv": "" if building_csv is None else str(building_csv),
+                    "stdout_log": str(stdout_log),
+                }
+                row.update(parse_summary(completed.stdout))
+                summary_rows.append(row)
 
     if not args.dry_run:
         summary_csv = results_dir / "summary.csv"
@@ -495,6 +513,7 @@ def main() -> int:
             "app_start_s",
             "update_interval_s",
             "aoi_sample_interval_s",
+            "rng_run",
             "urban_args",
             "sent_packets",
             "received_packets",

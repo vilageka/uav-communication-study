@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import csv
 import pathlib
+import statistics
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -62,6 +63,32 @@ def display_float(row: dict[str, str], key: str, digits: int = 3, suffix: str = 
     return f"{float(value):.{digits}f}{suffix}"
 
 
+def metric_values(rows: list[dict[str, str]], key: str) -> list[float]:
+    """Return all numeric values for one metric across repeated RNG runs."""
+
+    values = []
+    for row in rows:
+        value = row.get(key, "")
+        if value != "":
+            values.append(float(value))
+    return values
+
+
+def display_metric_mean(rows: list[dict[str, str]], key: str, digits: int = 3, suffix: str = "") -> str:
+    """Display a metric as mean, and as mean +/- stddev when repetitions exist."""
+
+    values = metric_values(rows, key)
+    if not values:
+        return "n/a"
+
+    mean = statistics.fmean(values)
+    if len(values) == 1:
+        return f"{mean:.{digits}f}{suffix}"
+
+    stddev = statistics.stdev(values)
+    return f"{mean:.{digits}f} +/- {stddev:.{digits}f}{suffix}"
+
+
 def architecture_name(key: str) -> str:
     names = {
         "wifi-adhoc": "Wi-Fi",
@@ -79,12 +106,16 @@ def comparable_key(row: dict[str, str]) -> tuple[str, str, str]:
     return (scenario, row.get("num_uavs", ""), row.get("spacing_m", ""))
 
 
-def sort_key(row: dict[str, str]) -> tuple[float, float, float]:
+def sort_key(rows: list[dict[str, str]]) -> tuple[float, float, float]:
     """Rank rows by reliability, freshness, then latency."""
 
-    pdr = float_value(row, "steady_delivery_ratio")
-    unknown = float_value(row, "steady_unknown_aoi_share", default=1.0)
-    latency = float_value(row, "steady_avg_latency_ms", default=1e9)
+    pdr_values = metric_values(rows, "steady_delivery_ratio")
+    unknown_values = metric_values(rows, "steady_unknown_aoi_share")
+    latency_values = metric_values(rows, "steady_avg_latency_ms")
+
+    pdr = statistics.fmean(pdr_values) if pdr_values else 0.0
+    unknown = statistics.fmean(unknown_values) if unknown_values else 1.0
+    latency = statistics.fmean(latency_values) if latency_values else 1e9
     return (-pdr, unknown, latency)
 
 
@@ -104,8 +135,13 @@ def markdown_table(rows: list[list[str]]) -> list[str]:
 
 
 def build_metric_table(rows: list[dict[str, str]]) -> list[str]:
+    architecture_rows: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in rows:
+        architecture_rows[row["architecture"]].append(row)
+
     table = [[
         "Architektur",
+        "Runs",
         "Steady PDR",
         "Steady unknown AoI",
         "Steady Avg AoI",
@@ -114,30 +150,37 @@ def build_metric_table(rows: list[dict[str, str]]) -> list[str]:
         "Gesamt App-Bytes",
     ]]
 
-    for row in sorted(rows, key=sort_key):
+    for architecture, arch_rows in sorted(architecture_rows.items(), key=lambda item: sort_key(item[1])):
         table.append([
-            architecture_name(row["architecture"]),
-            display_float(row, "steady_delivery_ratio"),
-            display_float(row, "steady_unknown_aoi_share"),
-            display_float(row, "steady_avg_known_aoi_s", suffix=" s"),
-            display_float(row, "steady_avg_latency_ms", suffix=" ms"),
-            display_float(row, "steady_avg_hops"),
-            row.get("app_bytes_sent") or "n/a",
+            architecture_name(architecture),
+            str(len(arch_rows)),
+            display_metric_mean(arch_rows, "steady_delivery_ratio"),
+            display_metric_mean(arch_rows, "steady_unknown_aoi_share"),
+            display_metric_mean(arch_rows, "steady_avg_known_aoi_s", suffix=" s"),
+            display_metric_mean(arch_rows, "steady_avg_latency_ms", suffix=" ms"),
+            display_metric_mean(arch_rows, "steady_avg_hops"),
+            display_metric_mean(arch_rows, "app_bytes_sent", digits=0),
         ])
 
     return markdown_table(table)
 
 
 def best_label(rows: list[dict[str, str]], metric: str, higher_is_better: bool) -> str:
-    valid = [row for row in rows if row.get(metric, "") != ""]
-    if not valid:
+    architecture_rows: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in rows:
+        architecture_rows[row["architecture"]].append(row)
+
+    means = []
+    for architecture, arch_rows in architecture_rows.items():
+        values = metric_values(arch_rows, metric)
+        if values:
+            means.append((architecture, statistics.fmean(values)))
+
+    if not means:
         return "n/a"
 
-    best = max(valid, key=lambda row: float_value(row, metric)) if higher_is_better else min(
-        valid,
-        key=lambda row: float_value(row, metric),
-    )
-    return architecture_name(best["architecture"])
+    best = max(means, key=lambda item: item[1]) if higher_is_better else min(means, key=lambda item: item[1])
+    return architecture_name(best[0])
 
 
 def build_group_summary(rows: list[dict[str, str]]) -> list[str]:
@@ -192,6 +235,8 @@ def build_report(sources: list[ReportSource]) -> str:
         "Die Rangfolge innerhalb eines Szenarios ist bewusst einfach:",
         "zuerst hohe Packet Delivery Ratio, dann wenig unknown AoI, dann",
         "niedrige Latenz fuer erfolgreich empfangene Pakete.",
+        "Wenn mehrere `rngRun`-Wiederholungen vorhanden sind, zeigt die",
+        "Tabelle Mittelwert +/- Standardabweichung.",
         "",
     ]
 
