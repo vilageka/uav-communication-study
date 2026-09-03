@@ -312,6 +312,7 @@ main(int argc, char* argv[])
     double spacingMeters = 100.0;
     double altitudeMeters = 80.0;
     double txPowerDbm = 16.0;
+    double channelFrequencyHz = 2.4e9;
     uint64_t rngRun = 1;
     bool enablePcap = false;
     std::string metricsFile = "uav-wifi-baseline-metrics.csv";
@@ -336,6 +337,9 @@ main(int argc, char* argv[])
     cmd.AddValue("spacing", "Grid spacing between UAVs in meters", spacingMeters);
     cmd.AddValue("altitude", "UAV altitude in meters", altitudeMeters);
     cmd.AddValue("txPower", "Wi-Fi transmit power in dBm", txPowerDbm);
+    cmd.AddValue("frequency",
+                 "Carrier frequency in Hz for the Friis propagation model",
+                 channelFrequencyHz);
     cmd.AddValue("rngRun", "ns-3 RNG run number for reproducible repetitions", rngRun);
     cmd.AddValue("metricsFile", "CSV file for received position updates", metricsFile);
     cmd.AddValue("enablePcap", "Enable Wi-Fi pcap tracing", enablePcap);
@@ -395,11 +399,15 @@ main(int argc, char* argv[])
 
     // Funkkanal: ConstantSpeedPropagationDelayModel modelliert die
     // Ausbreitungsverzoegerung mit Lichtgeschwindigkeit. Friis ist ein
-    // einfaches Freiraum-Pfadverlustmodell. Urbane Abschattung durch Gebaeude
-    // ist hier noch nicht enthalten und waere ein spaeterer Modellschritt.
+    // einfaches Freiraum-Pfadverlustmodell. Die Frequenz wird explizit auf
+    // 2.4 GHz gesetzt, damit 802.11b, DsssRate11Mbps und Pfadverlustmodell
+    // zusammenpassen. Urbane Abschattung durch Gebaeude ist hier noch nicht
+    // enthalten und waere ein spaeterer Modellschritt.
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-    wifiChannel.AddPropagationLoss("ns3::FriisPropagationLossModel");
+    wifiChannel.AddPropagationLoss("ns3::FriisPropagationLossModel",
+                                   "Frequency",
+                                   DoubleValue(channelFrequencyHz));
 
     // Physikalische Wi-Fi-Schicht. TxPowerStart und TxPowerEnd werden auf
     // denselben Wert gesetzt, damit jedes Paket mit konstanter Sendeleistung

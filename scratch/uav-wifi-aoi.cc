@@ -393,6 +393,7 @@ main(int argc, char* argv[])
     double spacingMeters = 100.0;
     double altitudeMeters = 80.0;
     double txPowerDbm = 16.0;
+    double channelFrequencyHz = 2.4e9;
     uint64_t rngRun = 1;
     bool enablePcap = false;
     std::string updateMetricsFile = "uav-wifi-aoi-updates.csv";
@@ -420,6 +421,9 @@ main(int argc, char* argv[])
     cmd.AddValue("spacing", "Grid spacing between UAVs in meters", spacingMeters);
     cmd.AddValue("altitude", "UAV altitude in meters", altitudeMeters);
     cmd.AddValue("txPower", "Wi-Fi transmit power in dBm", txPowerDbm);
+    cmd.AddValue("frequency",
+                 "Carrier frequency in Hz for the Friis propagation model",
+                 channelFrequencyHz);
     cmd.AddValue("rngRun", "ns-3 RNG run number for reproducible repetitions", rngRun);
     cmd.AddValue("updateMetricsFile", "CSV file for received position updates", updateMetricsFile);
     cmd.AddValue("aoiMetricsFile", "CSV file for AoI samples", aoiMetricsFile);
@@ -461,7 +465,9 @@ main(int argc, char* argv[])
 
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-    wifiChannel.AddPropagationLoss("ns3::FriisPropagationLossModel");
+    wifiChannel.AddPropagationLoss("ns3::FriisPropagationLossModel",
+                                   "Frequency",
+                                   DoubleValue(channelFrequencyHz));
 
     YansWifiPhyHelper wifiPhy;
     wifiPhy.SetChannel(wifiChannel.Create());
