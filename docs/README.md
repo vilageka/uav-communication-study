@@ -30,6 +30,7 @@ nachvollziehbar bleibt.
 | 15 | `15-urbane-formen-auswertung.md` | Korrigierte Auswertung der urbanen Formen mit konsistenter 2.4-GHz-Wi-Fi-Parametrisierung |
 | 16 | `16-kapitel-konzeption-ueberarbeitet.md` | Ueberarbeitete Konzeption als Grundlage fuer das Bachelorarbeitskapitel |
 | 17 | `17-kapitel-implementierung-ueberarbeitet.md` | Ueberarbeitete Implementierungsbeschreibung als Grundlage fuer das Bachelorarbeitskapitel |
+| 18 | `18-urbane-hoehenvariation-auswertung.md` | Ergebnislauf zur Flughoehe relativ zur Gebaeudehoehe mit 135 Einzelruns |
 
 ## Grundidee
 
@@ -68,6 +69,7 @@ Die ausformulierten Kapitelentwuerfe fuer die Bachelorarbeit sind:
 - `16-kapitel-konzeption-ueberarbeitet.md`
 - `17-kapitel-implementierung-ueberarbeitet.md`
 - `15-urbane-formen-auswertung.md`
+- `18-urbane-hoehenvariation-auswertung.md`
 
 ## Hinweise zur Interpretation
 

@@ -101,9 +101,9 @@ def architecture_name(key: str) -> str:
     return names.get(key, key)
 
 
-def comparable_key(row: dict[str, str]) -> tuple[str, str, str]:
+def comparable_key(row: dict[str, str]) -> tuple[str, str, str, str]:
     scenario = row.get("scenario") or "grid"
-    return (scenario, row.get("num_uavs", ""), row.get("spacing_m", ""))
+    return (scenario, row.get("num_uavs", ""), row.get("spacing_m", ""), row.get("altitude_m", ""))
 
 
 def sort_key(rows: list[dict[str, str]]) -> tuple[float, float, float]:
@@ -196,7 +196,7 @@ def build_group_summary(rows: list[dict[str, str]]) -> list[str]:
 
 
 def build_section(source: ReportSource, rows: list[dict[str, str]]) -> list[str]:
-    grouped: dict[tuple[str, str, str], list[dict[str, str]]] = defaultdict(list)
+    grouped: dict[tuple[str, str, str, str], list[dict[str, str]]] = defaultdict(list)
     for row in rows:
         grouped[comparable_key(row)].append(row)
 
@@ -207,12 +207,13 @@ def build_section(source: ReportSource, rows: list[dict[str, str]]) -> list[str]
         "",
     ]
 
-    for key in sorted(grouped.keys(), key=lambda item: (item[0], int(item[1]), int(item[2]))):
-        scenario, num_uavs, spacing_m = key
+    for key in sorted(grouped.keys(), key=lambda item: (item[0], int(item[1]), int(item[2]), item[3])):
+        scenario, num_uavs, spacing_m, altitude_m = key
         rows_for_key = grouped[key]
+        altitude_label = "" if altitude_m == "" else f", altitude {float(altitude_m):.1f} m"
         lines.extend(
             [
-                f"### {scenario}, {num_uavs} UAVs, {spacing_m} m",
+                f"### {scenario}, {num_uavs} UAVs, {spacing_m} m{altitude_label}",
                 "",
             ]
         )

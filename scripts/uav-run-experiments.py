@@ -47,6 +47,7 @@ class Scenario:
     sim_time: float
     update_interval: float
     aoi_sample_interval: float
+    altitude: float | None = None
     urban_args: dict[str, str] | None = None
 
 
@@ -134,6 +135,12 @@ URBAN_FORMS = {
     },
 }
 
+URBAN_HEIGHT_MODES = (
+    ("inside", 0.75),
+    ("near-roof", 1.0),
+    ("above-roof", None),
+)
+
 
 SUMMARY_PATTERNS = {
     "sent_packets": (
@@ -187,7 +194,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--profile",
-        choices=("standard", "full", "smoke", "urban-forms"),
+        choices=("standard", "full", "smoke", "urban-forms", "urban-heights"),
         default="standard",
         help="Scenario matrix size. 'smoke' is only for a quick script check.",
     )
@@ -245,6 +252,26 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def urban_height_altitude(building_height: float, mode: str, factor: float | None) -> float:
+    """Return an UAV altitude for one height mode.
+
+    The height study keeps the horizontal placement and urban form fixed while
+    moving UAVs vertically relative to the generated buildings:
+
+    * inside: below the roofline, but still on street-corridor positions.
+    * near-roof: slightly above the roofline.
+    * above-roof: the previous 80 m reference altitude.
+    """
+
+    if mode == "above-roof":
+        return 80.0
+    if mode == "near-roof":
+        return building_height + 5.0
+    if factor is None:
+        raise ValueError(f"height mode {mode} needs a factor")
+    return max(5.0, building_height * factor)
+
+
 def scenario_matrix(profile: str, sim_time: float, update_interval: float, aoi_sample_interval: float) -> list[Scenario]:
     """Return the scenario list for the selected experiment profile."""
 
@@ -260,6 +287,25 @@ def scenario_matrix(profile: str, sim_time: float, update_interval: float, aoi_s
         uav_counts = (20,)
         spacings = (100,)
         scenario_names = tuple(URBAN_FORMS.keys())
+    elif profile == "urban-heights":
+        scenarios: list[Scenario] = []
+        for urban_name, urban_args in URBAN_FORMS.items():
+            building_height = float(urban_args["buildingHeight"])
+            for mode, factor in URBAN_HEIGHT_MODES:
+                altitude = urban_height_altitude(building_height, mode, factor)
+                scenarios.append(
+                    Scenario(
+                        name=f"{urban_name}-{mode}",
+                        uavs=20,
+                        spacing=100,
+                        sim_time=sim_time,
+                        update_interval=update_interval,
+                        aoi_sample_interval=aoi_sample_interval,
+                        altitude=altitude,
+                        urban_args=urban_args,
+                    )
+                )
+        return scenarios
     else:
         uav_counts = STANDARD_UAV_COUNTS
         spacings = STANDARD_SPACINGS
@@ -273,6 +319,7 @@ def scenario_matrix(profile: str, sim_time: float, update_interval: float, aoi_s
             sim_time=sim_time,
             update_interval=update_interval,
             aoi_sample_interval=aoi_sample_interval,
+            altitude=None,
             urban_args=URBAN_FORMS.get(scenario_name),
         )
         for scenario_name in scenario_names
@@ -329,6 +376,9 @@ def build_command(
         f"--updateMetricsFile={update_csv}",
         f"--aoiMetricsFile={aoi_csv}",
     ]
+
+    if scenario.altitude is not None:
+        program_parts.append(f"--altitude={scenario.altitude}")
 
     if architecture.app_start is not None:
         program_parts.append(f"--appStart={architecture.app_start}")
@@ -388,6 +438,13 @@ def write_manifest(
                 "architectures=" + ",".join(architecture.key for architecture in architectures),
                 "uav_counts=" + ",".join(str(value) for value in sorted({scenario.uavs for scenario in scenarios})),
                 "spacings=" + ",".join(str(value) for value in sorted({scenario.spacing for scenario in scenarios})),
+                "altitudes="
+                + ",".join(
+                    str(value)
+                    for value in sorted(
+                        {scenario.altitude for scenario in scenarios if scenario.altitude is not None}
+                    )
+                ),
                 "",
                 "Each *_updates.csv and *_aoi.csv file is produced by one ns-3 scratch program.",
                 "summary.csv contains the parsed headline metrics for quick comparison.",
@@ -406,10 +463,19 @@ def main() -> int:
     ns3_root = ns3_root_from_script()
     analyzer_module = None if args.skip_steady_state or args.dry_run else load_analyzer_module()
 
+    # Urban profiles should only run the urban variants.  The free-grid
+    # programs would accept the same UAV counts and altitudes, but not the
+    # building parameters, and their results would not describe the intended
+    # urban comparison.
     selected_architectures = [
         architecture
         for architecture in ARCHITECTURES
-        if args.only is None or architecture.key in args.only
+        if (
+            args.only is not None
+            and architecture.key in args.only
+            or args.only is None
+            and (not args.profile.startswith("urban-") or architecture.has_building_metrics)
+        )
     ]
     scenarios = scenario_matrix(
         args.profile,
@@ -494,6 +560,7 @@ def main() -> int:
                     "app_start_s": "" if architecture.app_start is None else str(architecture.app_start),
                     "update_interval_s": str(scenario.update_interval),
                     "aoi_sample_interval_s": str(scenario.aoi_sample_interval),
+                    "altitude_m": "" if scenario.altitude is None else str(scenario.altitude),
                     "rng_run": str(rng_run),
                     "urban_args": "" if scenario.urban_args is None else ";".join(
                         f"{key}={value}" for key, value in scenario.urban_args.items()
@@ -519,6 +586,7 @@ def main() -> int:
             "app_start_s",
             "update_interval_s",
             "aoi_sample_interval_s",
+            "altitude_m",
             "rng_run",
             "urban_args",
             "sent_packets",

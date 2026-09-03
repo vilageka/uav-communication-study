@@ -5,8 +5,8 @@ Aggregate repeated UAV steady-state experiment runs.
 Input is a `steady-state-summary.csv` produced by `uav-analyze-results.py`.
 Rows with the same architecture, scenario, UAV count, spacing, and urban
 parameters are treated as repetitions.  The script writes one row per group and
-metric with mean, sample standard deviation, and a simple normal-approximation
-95 percent confidence interval half width.
+metric with mean, sample standard deviation, and a 95 percent confidence
+interval half width.
 
 This is intentionally separate from the Markdown report: the report is for
 reading, this CSV is for plots and thesis tables.
@@ -33,6 +33,7 @@ GROUP_KEYS = (
     "app_start_s",
     "update_interval_s",
     "aoi_sample_interval_s",
+    "altitude_m",
     "urban_args",
 )
 
