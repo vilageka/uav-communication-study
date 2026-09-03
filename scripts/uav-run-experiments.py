@@ -172,6 +172,12 @@ SUMMARY_PATTERNS = {
     "avg_known_aoi_s": (r"Average known AoI:\s+([0-9.eE+-]+)\s+s",),
     "max_known_aoi_s": (r"Max known AoI:\s+([0-9.eE+-]+)\s+s",),
     "buildings": (r"Buildings:\s+([0-9]+)",),
+    "min_pair_distance_m": (r"Min pair distance:\s+([0-9.eE+-]+)\s+m",),
+    "avg_pair_distance_m": (r"Average pair distance:\s+([0-9.eE+-]+)\s+m",),
+    "avg_nearest_neighbor_distance_m": (
+        r"Average nearest-neighbor distance:\s+([0-9.eE+-]+)\s+m",
+    ),
+    "max_pair_distance_m": (r"Max pair distance:\s+([0-9.eE+-]+)\s+m",),
 }
 
 
@@ -533,6 +539,10 @@ def main() -> int:
             "avg_known_aoi_s",
             "max_known_aoi_s",
             "buildings",
+            "min_pair_distance_m",
+            "avg_pair_distance_m",
+            "avg_nearest_neighbor_distance_m",
+            "max_pair_distance_m",
             "updates_csv",
             "aoi_csv",
             "building_csv",

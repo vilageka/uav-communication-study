@@ -48,7 +48,44 @@ METRICS = (
     "avg_latency_ms",
     "app_bytes_sent",
     "app_bytes_received",
+    "min_pair_distance_m",
+    "avg_pair_distance_m",
+    "avg_nearest_neighbor_distance_m",
+    "max_pair_distance_m",
 )
+
+T_CRITICAL_95 = {
+    1: 12.706,
+    2: 4.303,
+    3: 3.182,
+    4: 2.776,
+    5: 2.571,
+    6: 2.447,
+    7: 2.365,
+    8: 2.306,
+    9: 2.262,
+    10: 2.228,
+    11: 2.201,
+    12: 2.179,
+    13: 2.160,
+    14: 2.145,
+    15: 2.131,
+    16: 2.120,
+    17: 2.110,
+    18: 2.101,
+    19: 2.093,
+    20: 2.086,
+    21: 2.080,
+    22: 2.074,
+    23: 2.069,
+    24: 2.064,
+    25: 2.060,
+    26: 2.056,
+    27: 2.052,
+    28: 2.048,
+    29: 2.045,
+    30: 2.042,
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -82,7 +119,9 @@ def aggregate_metric(rows: list[dict[str, str]], metric: str) -> dict[str, str] 
 
     mean = statistics.fmean(values)
     stddev = statistics.stdev(values) if len(values) > 1 else 0.0
-    ci95 = 1.96 * stddev / math.sqrt(len(values)) if len(values) > 1 else 0.0
+    degrees_of_freedom = len(values) - 1
+    t_critical = T_CRITICAL_95.get(degrees_of_freedom, 1.96)
+    ci95 = t_critical * stddev / math.sqrt(len(values)) if len(values) > 1 else 0.0
 
     return {
         "metric": metric,
@@ -90,6 +129,7 @@ def aggregate_metric(rows: list[dict[str, str]], metric: str) -> dict[str, str] 
         "mean": f"{mean:.9f}",
         "stddev": f"{stddev:.9f}",
         "ci95_half_width": f"{ci95:.9f}",
+        "ci95_method": "student_t" if len(values) > 1 else "",
         "min": f"{min(values):.9f}",
         "max": f"{max(values):.9f}",
     }
@@ -117,7 +157,16 @@ def main() -> int:
             output_rows.append(base | aggregate)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = list(GROUP_KEYS) + ["metric", "n", "mean", "stddev", "ci95_half_width", "min", "max"]
+    fieldnames = list(GROUP_KEYS) + [
+        "metric",
+        "n",
+        "mean",
+        "stddev",
+        "ci95_half_width",
+        "ci95_method",
+        "min",
+        "max",
+    ]
     with output_path.open("w", newline="", encoding="utf-8") as output_file:
         writer = csv.DictWriter(output_file, fieldnames=fieldnames)
         writer.writeheader()

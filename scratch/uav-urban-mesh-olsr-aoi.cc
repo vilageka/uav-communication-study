@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -72,6 +73,14 @@ struct UrbanScenarioConfig
     double streetWidth{40.0};
     double buildingHeight{35.0};
     std::string buildingMetricsFile{"uav-urban-mesh-olsr-buildings.csv"};
+};
+
+struct PairDistanceStats
+{
+    double minPairDistanceMeters{0.0};
+    double averagePairDistanceMeters{0.0};
+    double averageNearestNeighborDistanceMeters{0.0};
+    double maxPairDistanceMeters{0.0};
 };
 
 struct PacketStats
@@ -502,6 +511,56 @@ PrintUavPositions(const NodeContainer& uavs)
     }
 }
 
+PairDistanceStats
+ComputePairDistanceStats(const NodeContainer& uavs)
+{
+    PairDistanceStats stats;
+    if (uavs.GetN() < 2)
+    {
+        return stats;
+    }
+
+    double pairDistanceSum = 0.0;
+    uint64_t pairCount = 0;
+    double nearestNeighborSum = 0.0;
+    stats.minPairDistanceMeters = std::numeric_limits<double>::max();
+
+    for (uint32_t i = 0; i < uavs.GetN(); ++i)
+    {
+        const Vector positionI = uavs.Get(i)->GetObject<MobilityModel>()->GetPosition();
+        double nearestNeighbor = std::numeric_limits<double>::max();
+
+        for (uint32_t j = 0; j < uavs.GetN(); ++j)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+
+            const Vector positionJ = uavs.Get(j)->GetObject<MobilityModel>()->GetPosition();
+            const double distanceMeters = CalculateDistance(positionI, positionJ);
+            nearestNeighbor = std::min(nearestNeighbor, distanceMeters);
+
+            if (j > i)
+            {
+                stats.minPairDistanceMeters =
+                    std::min(stats.minPairDistanceMeters, distanceMeters);
+                stats.maxPairDistanceMeters =
+                    std::max(stats.maxPairDistanceMeters, distanceMeters);
+                pairDistanceSum += distanceMeters;
+                pairCount++;
+            }
+        }
+
+        nearestNeighborSum += nearestNeighbor;
+    }
+
+    stats.averagePairDistanceMeters = pairDistanceSum / static_cast<double>(pairCount);
+    stats.averageNearestNeighborDistanceMeters =
+        nearestNeighborSum / static_cast<double>(uavs.GetN());
+    return stats;
+}
+
 void
 PrintUrbanScenario(const UrbanScenarioConfig& urban, uint32_t buildingCount)
 {
@@ -539,7 +598,7 @@ main(int argc, char* argv[])
     double spacingMeters = 100.0;
     double altitudeMeters = 80.0;
     double txPowerDbm = 16.0;
-    double channelFrequencyHz = 5.0e9;
+    double channelFrequencyHz = 2.4e9;
     uint64_t rngRun = 1;
     bool enablePcap = false;
     std::string updateMetricsFile = "uav-mesh-olsr-aoi-updates.csv";
@@ -698,6 +757,7 @@ main(int argc, char* argv[])
 
     PrintUrbanScenario(urban, buildings.size());
     PrintUavPositions(uavs);
+    const PairDistanceStats distanceStats = ComputePairDistanceStats(uavs);
 
     Simulator::Schedule(Seconds(0.0), &SampleAoi, uavs);
 
@@ -756,6 +816,12 @@ main(int argc, char* argv[])
     std::cout << "Buildings: " << buildings.size() << std::endl;
     std::cout << "Street width: " << urban.streetWidth << " m" << std::endl;
     std::cout << "Building height: " << urban.buildingHeight << " m" << std::endl;
+    std::cout << "Min pair distance: " << distanceStats.minPairDistanceMeters << " m" << std::endl;
+    std::cout << "Average pair distance: " << distanceStats.averagePairDistanceMeters << " m"
+              << std::endl;
+    std::cout << "Average nearest-neighbor distance: "
+              << distanceStats.averageNearestNeighborDistanceMeters << " m" << std::endl;
+    std::cout << "Max pair distance: " << distanceStats.maxPairDistanceMeters << " m" << std::endl;
     std::cout << "Traffic start: " << appStartSeconds << " s" << std::endl;
     std::cout << "Sent application packets: " << g_packetStats.packetsSent << std::endl;
     std::cout << "Received application packets: " << g_packetStats.packetsReceived << " / "

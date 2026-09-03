@@ -27,6 +27,9 @@ nachvollziehbar bleibt.
 | 13 | `13-methodische-stabilisierung.md` | AoI-Out-of-order-Schutz, RNG-Wiederholungen und Broadcast-Bytes |
 | 13b | `scripts/uav-aggregate-results.py` | Aggregierte CSV-Auswertung mit Mittelwert, Standardabweichung und 95-Prozent-CI |
 | 14 | `14-finale-standardauswertung.md` | Erster echter Standard-Ergebnislauf mit 120 Einzelruns |
+| 15 | `15-urbane-formen-auswertung.md` | Korrigierte Auswertung der urbanen Formen mit konsistenter 2.4-GHz-Wi-Fi-Parametrisierung |
+| 16 | `16-kapitel-konzeption-ueberarbeitet.md` | Ueberarbeitete Konzeption als Grundlage fuer das Bachelorarbeitskapitel |
+| 17 | `17-kapitel-implementierung-ueberarbeitet.md` | Ueberarbeitete Implementierungsbeschreibung als Grundlage fuer das Bachelorarbeitskapitel |
 
 ## Grundidee
 
@@ -51,6 +54,20 @@ scripts/uav-aggregate-results.py results/uav-urban-all-v08/steady-state-summary.
 ```
 
 Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.
+
+## Aktueller Stand fuer die Bachelorarbeit
+
+Fuer die freien Standard-Szenarien liegt ein Ergebnislauf mit 120 Einzelruns
+vor. Fuer die urbanen Formen liegt mit `v16` ein korrigierter Lauf mit
+45 Einzelruns vor. Der vorherige urbane Diagnose-Lauf `v15` wird nicht als
+finale Ergebnisbasis verwendet, weil Wi-Fi-Standard und Modellfrequenz dort
+nicht konsistent parametrisiert waren.
+
+Die ausformulierten Kapitelentwuerfe fuer die Bachelorarbeit sind:
+
+- `16-kapitel-konzeption-ueberarbeitet.md`
+- `17-kapitel-implementierung-ueberarbeitet.md`
+- `15-urbane-formen-auswertung.md`
 
 ## Hinweise zur Interpretation
 
