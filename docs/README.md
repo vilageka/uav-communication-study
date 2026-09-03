@@ -32,6 +32,7 @@ nachvollziehbar bleibt.
 | 17 | `17-kapitel-implementierung-ueberarbeitet.md` | Ueberarbeitete Implementierungsbeschreibung als Grundlage fuer das Bachelorarbeitskapitel |
 | 18 | `18-urbane-hoehenvariation-auswertung.md` | Ergebnislauf zur Flughoehe relativ zur Gebaeudehoehe mit 135 Einzelruns |
 | 19 | `19-freie-friis-frequenzkorrektur.md` | Korrektur der freien Friis-Wi-Fi-Szenarien auf explizite 2.4-GHz-Parametrisierung |
+| 20 | `20-freie-standardauswertung.md` | Neu gerechnete freie Standardauswertung nach der 2.4-GHz-Friis-Korrektur |
 
 ## Grundidee
 
@@ -59,9 +60,8 @@ Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.
 
 ## Aktueller Stand fuer die Bachelorarbeit
 
-Fuer die freien Standard-Szenarien liegt ein Ergebnislauf mit 120 Einzelruns
-vor, dieser sollte nach der Frequenzkorrektur aus Version 19 jedoch neu
-erzeugt werden. Fuer die urbanen Formen liegt mit `v16` ein korrigierter Lauf mit
+Fuer die freien Standard-Szenarien liegt mit `v20` ein neu gerechneter
+Ergebnislauf nach der Frequenzkorrektur aus Version 19 vor. Fuer die urbanen Formen liegt mit `v16` ein korrigierter Lauf mit
 45 Einzelruns vor. Der vorherige urbane Diagnose-Lauf `v15` wird nicht als
 finale Ergebnisbasis verwendet, weil Wi-Fi-Standard und Modellfrequenz dort
 nicht konsistent parametrisiert waren.
@@ -72,6 +72,7 @@ Die ausformulierten Kapitelentwuerfe fuer die Bachelorarbeit sind:
 - `17-kapitel-implementierung-ueberarbeitet.md`
 - `15-urbane-formen-auswertung.md`
 - `18-urbane-hoehenvariation-auswertung.md`
+- `20-freie-standardauswertung.md`
 
 ## Hinweise zur Interpretation
 
