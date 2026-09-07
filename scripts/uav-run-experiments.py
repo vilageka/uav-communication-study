@@ -108,6 +108,17 @@ STANDARD_SPACINGS = (60, 100)
 FULL_UAV_COUNTS = (5, 10, 20, 40)
 FULL_SPACINGS = (60, 100, 160)
 
+# Zusatzmatrix fuer die freie Skalierungsbetrachtung.  Die Punkte ergaenzen
+# den korrigierten freien Standardlauf v20, ohne die bereits gerechneten
+# Kombinationen 5/20 UAVs mit 60/100 m erneut auszufuehren.
+FREE_SCALE_EXTENSION_POINTS = (
+    (5, 200),
+    (20, 200),
+    (40, 60),
+    (40, 100),
+    (40, 200),
+)
+
 URBAN_FORMS = {
     "urban-open": {
         "blocksX": "3",
@@ -194,7 +205,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--profile",
-        choices=("standard", "full", "smoke", "urban-forms", "urban-heights"),
+        choices=("standard", "full", "smoke", "free-scale-extension", "urban-forms", "urban-heights"),
         default="standard",
         help="Scenario matrix size. 'smoke' is only for a quick script check.",
     )
@@ -249,6 +260,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Do not create steady-state-summary.csv after the experiment run.",
     )
+    parser.add_argument(
+        "--resume-existing",
+        action="store_true",
+        help="Reuse complete existing run logs and execute only missing or incomplete runs.",
+    )
     return parser.parse_args()
 
 
@@ -283,6 +299,18 @@ def scenario_matrix(profile: str, sim_time: float, update_interval: float, aoi_s
         uav_counts = FULL_UAV_COUNTS
         spacings = FULL_SPACINGS
         scenario_names = ("grid",)
+    elif profile == "free-scale-extension":
+        return [
+            Scenario(
+                name="grid",
+                uavs=uavs,
+                spacing=spacing,
+                sim_time=sim_time,
+                update_interval=update_interval,
+                aoi_sample_interval=aoi_sample_interval,
+            )
+            for uavs, spacing in FREE_SCALE_EXTENSION_POINTS
+        ]
     elif profile == "urban-forms":
         uav_counts = (20,)
         spacings = (100,)
@@ -418,6 +446,40 @@ def parse_summary(stdout: str) -> dict[str, str]:
     }
 
 
+def build_summary_row(
+    architecture: Architecture,
+    scenario: Scenario,
+    rng_run: int,
+    update_csv: pathlib.Path,
+    aoi_csv: pathlib.Path,
+    building_csv: pathlib.Path | None,
+    stdout_log: pathlib.Path,
+) -> dict[str, str]:
+    """Build the metadata part of one summary row."""
+
+    return {
+        "architecture": architecture.key,
+        "architecture_label": architecture.label,
+        "program": architecture.program,
+        "scenario": scenario.name,
+        "num_uavs": str(scenario.uavs),
+        "spacing_m": str(scenario.spacing),
+        "sim_time_s": str(scenario.sim_time),
+        "app_start_s": "" if architecture.app_start is None else str(architecture.app_start),
+        "update_interval_s": str(scenario.update_interval),
+        "aoi_sample_interval_s": str(scenario.aoi_sample_interval),
+        "altitude_m": "" if scenario.altitude is None else str(scenario.altitude),
+        "rng_run": str(rng_run),
+        "urban_args": "" if scenario.urban_args is None else ";".join(
+            f"{key}={value}" for key, value in scenario.urban_args.items()
+        ),
+        "updates_csv": str(update_csv),
+        "aoi_csv": str(aoi_csv),
+        "building_csv": "" if building_csv is None else str(building_csv),
+        "stdout_log": str(stdout_log),
+    }
+
+
 def write_manifest(
     results_dir: pathlib.Path,
     profile: str,
@@ -463,10 +525,9 @@ def main() -> int:
     ns3_root = ns3_root_from_script()
     analyzer_module = None if args.skip_steady_state or args.dry_run else load_analyzer_module()
 
-    # Urban profiles should only run the urban variants.  The free-grid
-    # programs would accept the same UAV counts and altitudes, but not the
-    # building parameters, and their results would not describe the intended
-    # urban comparison.
+    # Environment-specific profiles should only run matching variants.  The
+    # free-grid programs do not describe urban comparisons, while the urban
+    # programs should not be mixed into the free scaling extension.
     selected_architectures = [
         architecture
         for architecture in ARCHITECTURES
@@ -474,7 +535,14 @@ def main() -> int:
             args.only is not None
             and architecture.key in args.only
             or args.only is None
-            and (not args.profile.startswith("urban-") or architecture.has_building_metrics)
+            and (
+                not args.profile.startswith("urban-")
+                or architecture.has_building_metrics
+            )
+            and (
+                args.profile != "free-scale-extension"
+                or not architecture.has_building_metrics
+            )
         )
     ]
     scenarios = scenario_matrix(
@@ -522,6 +590,25 @@ def main() -> int:
                 if args.dry_run:
                     continue
 
+                row = build_summary_row(
+                    architecture,
+                    scenario,
+                    rng_run,
+                    update_csv,
+                    aoi_csv,
+                    building_csv,
+                    stdout_log,
+                )
+
+                if args.resume_existing and stdout_log.exists():
+                    existing_stdout = stdout_log.read_text(encoding="utf-8")
+                    existing_summary = parse_summary(existing_stdout)
+                    if existing_summary.get("delivery_ratio", ""):
+                        row.update(existing_summary)
+                        summary_rows.append(row)
+                        print(f"  reused existing log: {stdout_log}", flush=True)
+                        continue
+
                 try:
                     completed = subprocess.run(
                         command,
@@ -549,27 +636,6 @@ def main() -> int:
                     print(f"  see {stdout_log}", file=sys.stderr)
                     return completed.returncode
 
-                row = {
-                    "architecture": architecture.key,
-                    "architecture_label": architecture.label,
-                    "program": architecture.program,
-                    "scenario": scenario.name,
-                    "num_uavs": str(scenario.uavs),
-                    "spacing_m": str(scenario.spacing),
-                    "sim_time_s": str(scenario.sim_time),
-                    "app_start_s": "" if architecture.app_start is None else str(architecture.app_start),
-                    "update_interval_s": str(scenario.update_interval),
-                    "aoi_sample_interval_s": str(scenario.aoi_sample_interval),
-                    "altitude_m": "" if scenario.altitude is None else str(scenario.altitude),
-                    "rng_run": str(rng_run),
-                    "urban_args": "" if scenario.urban_args is None else ";".join(
-                        f"{key}={value}" for key, value in scenario.urban_args.items()
-                    ),
-                    "updates_csv": str(update_csv),
-                    "aoi_csv": str(aoi_csv),
-                    "building_csv": "" if building_csv is None else str(building_csv),
-                    "stdout_log": str(stdout_log),
-                }
                 row.update(parse_summary(completed.stdout))
                 summary_rows.append(row)
 

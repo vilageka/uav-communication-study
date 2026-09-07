@@ -33,6 +33,7 @@ nachvollziehbar bleibt.
 | 18 | `18-urbane-hoehenvariation-auswertung.md` | Ergebnislauf zur Flughoehe relativ zur Gebaeudehoehe mit 135 Einzelruns |
 | 19 | `19-freie-friis-frequenzkorrektur.md` | Korrektur der freien Friis-Wi-Fi-Szenarien auf explizite 2.4-GHz-Parametrisierung |
 | 20 | `20-freie-standardauswertung.md` | Neu gerechnete freie Standardauswertung nach der 2.4-GHz-Friis-Korrektur |
+| 21 | `21-freie-skalierungserweiterung.md` | Erweiterung der freien Szenarien um 40 UAVs und 200 m Gitterabstand |
 
 ## Grundidee
 
@@ -52,6 +53,7 @@ werten Latenz, Zustellrate und ab Version 03 Age of Information aus.
 ./ns3 run "uav-urban-lte-infrastructure-aoi --numUavs=20 --spacing=100 --appStart=1"
 scripts/uav-run-experiments.py --profile standard
 scripts/uav-run-experiments.py --profile standard --runs 10 --sim-time 30
+scripts/uav-run-experiments.py --profile free-scale-extension --runs 5 --sim-time 30
 scripts/uav-analyze-results.py results/uav-urban-all-v08
 scripts/uav-aggregate-results.py results/uav-urban-all-v08/steady-state-summary.csv
 ```
@@ -61,7 +63,9 @@ Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.
 ## Aktueller Stand fuer die Bachelorarbeit
 
 Fuer die freien Standard-Szenarien liegt mit `v20` ein neu gerechneter
-Ergebnislauf nach der Frequenzkorrektur aus Version 19 vor. Fuer die urbanen Formen liegt mit `v16` ein korrigierter Lauf mit
+Ergebnislauf nach der Frequenzkorrektur aus Version 19 vor. Mit `v21` wurde
+diese freie Basis um 40 UAVs und 200 m Gitterabstand erweitert, damit
+Skalierbarkeit und Reichweitenbegrenzungen deutlicher sichtbar werden. Fuer die urbanen Formen liegt mit `v16` ein korrigierter Lauf mit
 45 Einzelruns vor. Der vorherige urbane Diagnose-Lauf `v15` wird nicht als
 finale Ergebnisbasis verwendet, weil Wi-Fi-Standard und Modellfrequenz dort
 nicht konsistent parametrisiert waren.
@@ -73,6 +77,7 @@ Die ausformulierten Kapitelentwuerfe fuer die Bachelorarbeit sind:
 - `15-urbane-formen-auswertung.md`
 - `18-urbane-hoehenvariation-auswertung.md`
 - `20-freie-standardauswertung.md`
+- `21-freie-skalierungserweiterung.md`
 
 ## Hinweise zur Interpretation
 
@@ -88,3 +93,10 @@ Teil dieser Luecken ueber mehrere Hops schliessen, erzeugt aber deutlich mehr
 Unicast-Traffic und hoehere Latenz. LTE erreicht in den ersten vereinfachten
 Ein-Zellen-Szenarien alle UAV-Paare zuverlaessig, ist aber von Infrastruktur
 und Scheduling abhaengig.
+
+Die freie Skalierungserweiterung `v21` zeigt zusaetzlich, dass 40 UAVs und
+200 m Gitterabstand ein deutlich anspruchsvollerer Fall sind: direkter
+Wi-Fi-Broadcast verliert dort viele entfernte Paare, waehrend OLSR unter der
+hohen paarweisen Last und groesseren Distanzen ebenfalls stark einbricht. LTE
+bleibt in diesem freien Ein-Zellen-Modell robust, besitzt aber weiter die
+hoehere infrastrukturseitige Latenz.
