@@ -119,6 +119,13 @@ FREE_SCALE_EXTENSION_POINTS = (
     (40, 200),
 )
 
+# Gezielter Langzeitpunkt fuer die Sensitivitaetsanalyse des OLSR-Einbruchs
+# aus v21.  Dieser Punkt wird separat gehalten, damit ein 120-s-Lauf nicht
+# versehentlich fuer alle freien Skalierungsszenarien gestartet wird.
+OLSR_LONG_SENSITIVITY_POINTS = (
+    (40, 200),
+)
+
 URBAN_FORMS = {
     "urban-open": {
         "blocksX": "3",
@@ -205,7 +212,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--profile",
-        choices=("standard", "full", "smoke", "free-scale-extension", "urban-forms", "urban-heights"),
+        choices=(
+            "standard",
+            "full",
+            "smoke",
+            "free-scale-extension",
+            "olsr-long-sensitivity",
+            "urban-forms",
+            "urban-heights",
+        ),
         default="standard",
         help="Scenario matrix size. 'smoke' is only for a quick script check.",
     )
@@ -310,6 +325,18 @@ def scenario_matrix(profile: str, sim_time: float, update_interval: float, aoi_s
                 aoi_sample_interval=aoi_sample_interval,
             )
             for uavs, spacing in FREE_SCALE_EXTENSION_POINTS
+        ]
+    elif profile == "olsr-long-sensitivity":
+        return [
+            Scenario(
+                name="grid",
+                uavs=uavs,
+                spacing=spacing,
+                sim_time=sim_time,
+                update_interval=update_interval,
+                aoi_sample_interval=aoi_sample_interval,
+            )
+            for uavs, spacing in OLSR_LONG_SENSITIVITY_POINTS
         ]
     elif profile == "urban-forms":
         uav_counts = (20,)
@@ -542,6 +569,10 @@ def main() -> int:
             and (
                 args.profile != "free-scale-extension"
                 or not architecture.has_building_metrics
+            )
+            and (
+                args.profile != "olsr-long-sensitivity"
+                or architecture.key == "olsr-mesh"
             )
         )
     ]

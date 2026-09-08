@@ -34,6 +34,7 @@ nachvollziehbar bleibt.
 | 19 | `19-freie-friis-frequenzkorrektur.md` | Korrektur der freien Friis-Wi-Fi-Szenarien auf explizite 2.4-GHz-Parametrisierung |
 | 20 | `20-freie-standardauswertung.md` | Neu gerechnete freie Standardauswertung nach der 2.4-GHz-Friis-Korrektur |
 | 21 | `21-freie-skalierungserweiterung.md` | Erweiterung der freien Szenarien um 40 UAVs und 200 m Gitterabstand |
+| 22 | `22-olsr-langzeit-sensitivitaet.md` | Langzeit-Sensitivitaet des OLSR-Einbruchs bei 40 UAVs und 200 m |
 
 ## Grundidee
 
@@ -54,6 +55,7 @@ werten Latenz, Zustellrate und ab Version 03 Age of Information aus.
 scripts/uav-run-experiments.py --profile standard
 scripts/uav-run-experiments.py --profile standard --runs 10 --sim-time 30
 scripts/uav-run-experiments.py --profile free-scale-extension --runs 5 --sim-time 30
+scripts/uav-run-experiments.py --profile olsr-long-sensitivity --runs 5 --sim-time 120
 scripts/uav-analyze-results.py results/uav-urban-all-v08
 scripts/uav-aggregate-results.py results/uav-urban-all-v08/steady-state-summary.csv
 ```
@@ -65,7 +67,10 @@ Die Scratch-Ziele werden ohne `scratch/` und ohne `.cc` gestartet.
 Fuer die freien Standard-Szenarien liegt mit `v20` ein neu gerechneter
 Ergebnislauf nach der Frequenzkorrektur aus Version 19 vor. Mit `v21` wurde
 diese freie Basis um 40 UAVs und 200 m Gitterabstand erweitert, damit
-Skalierbarkeit und Reichweitenbegrenzungen deutlicher sichtbar werden. Fuer die urbanen Formen liegt mit `v16` ein korrigierter Lauf mit
+Skalierbarkeit und Reichweitenbegrenzungen deutlicher sichtbar werden. `v22`
+ergaenzt dazu einen OLSR-Langzeitlauf fuer den kritischen Fall 40 UAVs und
+200 m, um AoI und unknown-AoI-Anteile ueber laengere Auswertungsfenster zu
+pruefen. Fuer die urbanen Formen liegt mit `v16` ein korrigierter Lauf mit
 45 Einzelruns vor. Der vorherige urbane Diagnose-Lauf `v15` wird nicht als
 finale Ergebnisbasis verwendet, weil Wi-Fi-Standard und Modellfrequenz dort
 nicht konsistent parametrisiert waren.
@@ -78,6 +83,7 @@ Die ausformulierten Kapitelentwuerfe fuer die Bachelorarbeit sind:
 - `18-urbane-hoehenvariation-auswertung.md`
 - `20-freie-standardauswertung.md`
 - `21-freie-skalierungserweiterung.md`
+- `22-olsr-langzeit-sensitivitaet.md`
 
 ## Hinweise zur Interpretation
 
